@@ -23,3 +23,10 @@ Per the `Docs/Git_Branching_Strategy.md` and CodeSplash'26 hackathon guidelines,
    - Do not use tools or commands that squash commit histories together. The judges need to see the raw, detailed commit history from each team member.
 
 By following these rules, you will help the team maintain a compliant, professional repository that meets the hackathon's strict evaluation criteria.
+
+## 📝 Task Tracking (OVERVIEW.md Updates)
+
+Whenever a team member (Nadija, Aloka, or Kaveen) completes a task or phase:
+1. You must automatically update their respective `00_OVERVIEW.md` file (e.g., `1_Nadija/00_OVERVIEW.md`).
+2. Mark the completed phase with a strikethrough (`~~`) and append `✅ **DONE**` in their phase table.
+3. Proactively keep their overview files strictly up-to-date as they progress through their tasks.
