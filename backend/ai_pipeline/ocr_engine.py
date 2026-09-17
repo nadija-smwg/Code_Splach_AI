@@ -5,6 +5,9 @@ import json
 import logging
 import os
 
+# Fix for PaddlePaddle 3.x on Windows CPU
+os.environ["FLAGS_use_onednn"] = "0"
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -31,7 +34,7 @@ class OcrEngine:
     def __init__(self):
         # Initialize PaddleOCR. use_angle_cls=True handles rotated text.
         # use_gpu=False is safe for broad compatibility, especially on Windows laptops.
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False)
+        self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
     
     def extract(self, pdf_path: str) -> OcrOutput:
         """Extract text + bounding boxes from all pages of a PDF."""
@@ -40,7 +43,7 @@ class OcrEngine:
 
         try:
             # Extract OCR data using PaddleOCR
-            result = self.ocr.ocr(pdf_path, cls=True)
+            result = self.ocr.ocr(pdf_path)
             
             # Get page dimensions using pdf2image
             images = convert_from_path(pdf_path)
