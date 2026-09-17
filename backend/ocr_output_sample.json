@@ -1,0 +1,67 @@
+{
+  "file_path": "sample_docs/commercial_invoice.pdf",
+  "total_pages": 1,
+  "pages": [
+    {
+      "page_number": 1,
+      "width": 1654,
+      "height": 2339,
+      "tokens": [
+        {
+          "text": "COMMERCIAL INVOICE",
+          "page": 1,
+          "bbox": [700.0, 100.0, 950.0, 130.0],
+          "confidence": 0.99
+        },
+        {
+          "text": "EXPORTER / SHIPPER",
+          "page": 1,
+          "bbox": [150.0, 200.0, 350.0, 220.0],
+          "confidence": 0.98
+        },
+        {
+          "text": "Textured Jersey Lanka PLC",
+          "page": 1,
+          "bbox": [150.0, 240.0, 450.0, 260.0],
+          "confidence": 0.99
+        },
+        {
+          "text": "CONSIGNEE",
+          "page": 1,
+          "bbox": [900.0, 200.0, 1050.0, 220.0],
+          "confidence": 0.98
+        },
+        {
+          "text": "Burlington Industries Inc.",
+          "page": 1,
+          "bbox": [900.0, 240.0, 1200.0, 260.0],
+          "confidence": 0.99
+        },
+        {
+          "text": "Invoice No: INV-2026-00451",
+          "page": 1,
+          "bbox": [150.0, 400.0, 450.0, 420.0],
+          "confidence": 0.97
+        },
+        {
+          "text": "Incoterms: FOB Colombo",
+          "page": 1,
+          "bbox": [900.0, 480.0, 1150.0, 500.0],
+          "confidence": 0.98
+        },
+        {
+          "text": "Gross Weight: 450.00 KG",
+          "page": 1,
+          "bbox": [150.0, 600.0, 400.0, 620.0],
+          "confidence": 0.96
+        },
+        {
+          "text": "TOTAL INVOICE VALUE: USD 49,740.00",
+          "page": 1,
+          "bbox": [150.0, 800.0, 550.0, 820.0],
+          "confidence": 0.99
+        }
+      ]
+    }
+  ]
+}
