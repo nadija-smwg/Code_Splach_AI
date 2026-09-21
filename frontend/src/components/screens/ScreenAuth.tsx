@@ -18,8 +18,11 @@ export function ScreenSignIn({ onTriggerToast }: Props) {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-8 flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
       <div className="w-full max-w-md bg-surface-container-lowest rounded-xl p-6 md:p-8 shadow-md border border-outline-variant/20 flex flex-col gap-4 text-xs">
-        <div className="text-center">
-          <span className="text-[10px] text-secondary font-bold uppercase tracking-widest block mb-1">Authorized Broker Gateway</span>
+        <div className="text-center relative">
+          <Link to="/" className="absolute left-0 top-0 text-on-surface-variant hover:text-on-surface flex items-center justify-center p-1 rounded-md hover:bg-surface-container-low transition-colors" title="Back to Home">
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          </Link>
+          <span className="text-[10px] text-secondary font-bold uppercase tracking-widest block mb-1 mt-1">Authorized Broker Gateway</span>
           <h1 className="text-xl font-bold text-on-surface">Sign in to ClearanceX</h1>
           <p className="text-[11px] text-outline mt-1">Enter your broker credentials to access the clearance terminal.</p>
         </div>
@@ -88,8 +91,11 @@ export function ScreenSignUp({ onTriggerToast }: Props) {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
       <div className="max-w-2xl mx-auto w-full bg-surface-container-lowest p-6 md:p-8 rounded-xl shadow-md border border-outline-variant/20 text-xs">
-        <div className="mb-4">
-          <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Step 1 of 3 • Enterprise Onboarding</span>
+        <div className="mb-4 relative text-center">
+          <Link to="/" className="absolute left-0 top-0 text-on-surface-variant hover:text-on-surface flex items-center justify-center p-1 rounded-md hover:bg-surface-container-low transition-colors" title="Back to Home">
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          </Link>
+          <span className="text-[10px] text-primary font-bold uppercase tracking-wider block mt-1">Step 1 of 3 • Enterprise Onboarding</span>
           <h1 className="text-xl font-bold text-on-surface mt-1">Create your ClearanceX Enterprise Account</h1>
           <p className="text-[11px] text-outline mt-0.5">Connect your freight brokerage or trading house to direct customs clearing infrastructure.</p>
         </div>
