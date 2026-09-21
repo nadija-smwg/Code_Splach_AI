@@ -10,7 +10,7 @@ export function ScreenOverview({ onTriggerToast }: Props) {
       <section className="relative w-full rounded-xl overflow-hidden shadow-sm bg-surface-container">
         <div className="relative w-full min-h-[360px] md:min-h-[380px] flex flex-col justify-end p-6 md:p-10">
           <img alt="Colombo International Trade and Logistics Terminal" className="absolute inset-0 w-full h-full object-cover object-center"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAZwQZCKfjVBoMnzkAQv3Z2ZGgmf4yG0RKtUgJ4xRkdDF7MmzXdrq7oqW4vjGYsZU7g9_yG5nxwttVUGn3xTOV00YRgV-qh8Q571oSDNcA250rzjdLquL2iGBaTSRHhWA2aUMELtU31nrOOZxcmX3uFnWydT0lCpcMSHRCSihpm2_0Fg1Wk2ghu4Or9slHNVkPdXfShphvYKq9PC9CLWMnJ98Z-zQlyHvXDjlw5KfxCUFBrkqtp7ynBZAozcXx4EP45KUED2__xAalZMY" />
+            src="/screen.png" />
           <div className="absolute inset-0 bg-gradient-to-t from-on-surface/90 via-on-surface/50 to-transparent"></div>
           <div className="absolute inset-0 bg-primary-container/10 mix-blend-overlay"></div>
           <div className="relative z-10 max-w-4xl flex flex-col gap-4">
