@@ -14,6 +14,8 @@ You own **everything the user sees and interacts with**. The judges will evaluat
 
 ## Phase Overview
 
+![ClearanceX UI Reference](../Docs/screen.png)
+
 | Phase | Title | Priority | Estimated Time |
 |-------|-------|----------|----------------|
 | ~~01~~ | ~~Project Setup (React + Vite + TypeScript)~~ — ✅ **DONE BY NADIJA — skip this** | ~~MUST~~ | ~~1 hour~~ |
