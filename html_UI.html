@@ -1,0 +1,424 @@
+<!DOCTYPE html><html class="h-full" lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><title>ClearanceX — AI Customs Intelligence</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface": "#fcf8fb", "secondary-container": "#82f5c1", "error": "#ba1a1a", "inverse-on-surface": "#f3f0f2", "primary-fixed": "#e2dfff", "surface-container-low": "#f6f3f5", "tertiary-container": "#4b4dd8", "tertiary": "#3130c0", "primary": "#3525cd", "on-tertiary-container": "#d9d8ff", "on-primary-container": "#dad7ff", "on-secondary-fixed-variant": "#005137", "inverse-primary": "#c3c0ff", "surface-dim": "#dcd9dc", "surface-container-highest": "#e4e2e4", "on-tertiary-fixed": "#07006c", "inverse-surface": "#303032", "on-tertiary": "#ffffff", "on-error": "#ffffff", "outline": "#777587", "on-surface": "#1b1b1d", "primary-container": "#4f46e5", "outline-variant": "#c7c4d8", "on-secondary-container": "#00714e", "surface-bright": "#fcf8fb", "surface-tint": "#4d44e3", "surface-container": "#f0edef", "on-primary-fixed": "#0f0069", "surface-container-high": "#eae7ea", "error-container": "#ffdad6", "surface-container-lowest": "#ffffff", "on-primary-fixed-variant": "#3323cc", "secondary-fixed-dim": "#68dba9", "on-secondary-fixed": "#002114", "on-background": "#1b1b1d", "on-secondary": "#ffffff", "on-tertiary-fixed-variant": "#2f2ebe", "surface-variant": "#e4e2e4", "secondary-fixed": "#85f8c4", "tertiary-fixed": "#e1e0ff", "secondary": "#006c4a", "on-error-container": "#93000a", "on-primary": "#ffffff", "primary-fixed-dim": "#c3c0ff", "background": "#fcf8fb", "tertiary-fixed-dim": "#c0c1ff", "on-surface-variant": "#464555" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter-mobile": "1rem", "space-md": "1rem", "margin": "2.5rem", "margin-mobile": "1rem", "space-xl": "2.5rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "gutter": "1.5rem", "space-xs": "0.25rem" }, "fontFamily": { "numeric-data": [ "Inter" ], "headline-sm": [ "Inter" ], "headline-lg": [ "Inter" ], "display-lg-mobile": [ "Inter" ], "body-lg": [ "Inter" ], "display-lg": [ "Inter" ], "title-md": [ "Inter" ], "label-md": [ "Inter" ], "body-md": [ "Inter" ], "body-sm": [ "Inter" ], "headline-md": [ "Inter" ], "label-sm": [ "Inter" ] }, "fontSize": { "numeric-data": [ "0.875rem", { "lineHeight": "1.25rem", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "headline-sm": [ "1.25rem", { "lineHeight": "1.75rem", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-lg": [ "2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.025em", "fontWeight": "600" } ], "display-lg-mobile": [ "2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.025em", "fontWeight": "600" } ], "body-lg": [ "1.0625rem", { "lineHeight": "1.65rem", "letterSpacing": "-0.01em", "fontWeight": "400" } ], "display-lg": [ "3rem", { "lineHeight": "3.5rem", "letterSpacing": "-0.035em", "fontWeight": "600" } ], "title-md": [ "1rem", { "lineHeight": "1.5rem", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "label-md": [ "0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "0.01em", "fontWeight": "500" } ], "body-md": [ "0.9375rem", { "lineHeight": "1.5rem", "letterSpacing": "-0.005em", "fontWeight": "400" } ], "body-sm": [ "0.8125rem", { "lineHeight": "1.25rem", "letterSpacing": "0", "fontWeight": "400" } ], "headline-md": [ "1.5rem", { "lineHeight": "2rem", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "label-sm": [ "0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "600" } ] } } } };</script></head><body class="bg-background font-body-md text-body-md text-on-surface antialiased min-h-screen flex flex-col"><header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)]"><div class="h-20 w-full px-margin flex items-center justify-between gap-space-md border-b border-outline-variant/30"><div class="flex items-center gap-space-lg shrink-0"><a class="flex items-center gap-space-xs group" href="#"><div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-surface shadow-sm"><span class="material-symbols-outlined text-[20px]">token</span></div><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">ClearanceX</span><span class="font-label-sm text-label-sm text-secondary bg-secondary-container/20 px-1.5 py-0.5 rounded font-semibold ml-1">LK-ASYCUDA</span></a></div><nav class="hidden xl:flex items-center gap-1 overflow-x-auto py-space-xs mx-space-sm"><a aria-current="page" class="font-label-md text-label-md px-space-sm py-1.5 rounded-lg font-semibold bg-primary-fixed text-primary transition-colors whitespace-nowrap shadow-sm" data-path="overview" href="#">Overview</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="dossiers" href="#">Dossiers</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="review-workspace" href="#">Review Workspace</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="discrepancies" href="#">Discrepancies</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="knowledge-graph" href="#">Knowledge Graph</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="asycuda-gateway" href="#">ASYCUDA Gateway</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="audit-log" href="#">Audit Log</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="tariff-directory" href="#">Tariff Directory</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="consignees" href="#">Consignees</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="analytics" href="#">Analytics</a><a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface px-space-sm py-1.5 rounded-lg transition-colors whitespace-nowrap" data-path="settings" href="#">Settings</a></nav><div class="flex items-center gap-space-sm shrink-0"><div class="relative hidden lg:block"><span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span><input class="w-56 xl:w-64 bg-surface-container-low pl-9 pr-8 py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(79,70,229,0.15)] transition-all" placeholder="Search manifests, HS codes..." type="text"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-label-sm font-label-sm text-outline px-1 rounded bg-surface-container border border-outline-variant/30">⌘K</span></div><div class="hidden sm:flex items-center gap-space-xs bg-surface-container-low px-space-sm py-1.5 rounded-full"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span></span><span class="font-label-sm text-label-sm text-on-surface font-medium">Sync Active</span><span class="font-label-sm text-label-sm text-outline">•</span><span class="font-numeric-data text-numeric-data text-secondary font-semibold">2ms</span></div><button aria-label="Notifications" class="relative p-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-low transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary-container"></span></button><div class="flex items-center pl-space-xs"><div class="w-8 h-8 rounded-full bg-primary-container/10 border border-primary-container/20 flex items-center justify-center font-label-md font-semibold text-primary shadow-sm">SL</div></div></div></div></header><main class="w-full pt-20 bg-background flex-1 flex flex-col"><div class="w-full max-w-7xl mx-auto px-margin py-space-xl flex-1 flex flex-col"><div class="flex flex-col w-full">
+<!-- Top Sovereign Architectural Hero Banner -->
+<section class="relative w-full rounded-xl overflow-hidden shadow-sm bg-surface-container mb-space-xl">
+<div class="relative w-full min-h-[360px] md:min-h-[400px] flex flex-col justify-end p-space-lg md:p-space-xl">
+<!-- Background Asset with Multi-stop Gradient Scrim -->
+<img alt="Colombo International Trade and Logistics Terminal" class="absolute inset-0 w-full h-full object-cover object-center" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAZwQZCKfjVBoMnzkAQv3Z2ZGgmf4yG0RKtUgJ4xRkdDF7MmzXdrq7oqW4vjGYsZU7g9_yG5nxwttVUGn3xTOV00YRgV-qh8Q571oSDNcA250rzjdLquL2iGBaTSRHhWA2aUMELtU31nrOOZxcmX3uFnWydT0lCpcMSHRCSihpm2_0Fg1Wk2ghu4Or9slHNVkPdXfShphvYKq9PC9CLWMnJ98Z-zQlyHvXDjlw5KfxCUFBrkqtp7ynBZAozcXx4EP45KUED2__xAalZMY">
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/90 via-on-surface/40 to-transparent"></div>
+<div class="absolute inset-0 bg-primary-container/10 mix-blend-overlay"></div>
+<!-- Hero Content -->
+<div class="relative z-10 max-w-4xl flex flex-col gap-space-md">
+<!-- Live Status Pill -->
+<div class="inline-flex items-center self-start gap-space-xs bg-surface-container-lowest/90 backdrop-blur-md px-space-sm py-1 rounded-full shadow-sm">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+</span>
+<span class="font-label-sm text-label-sm text-secondary font-semibold tracking-wide uppercase">ASYCUDA 4.2.1 Connected</span>
+<span class="text-outline font-label-sm text-label-sm">•</span>
+<span class="font-numeric-data text-numeric-data text-on-surface-variant font-medium">2ms latency</span>
+</div>
+<div class="space-y-space-xs">
+<h1 class="font-headline-lg text-headline-lg text-surface tracking-tight font-semibold">
+            Colombo Customs Intelligence Corridor
+          </h1>
+<p class="font-body-lg text-body-lg text-surface-variant max-w-2xl font-normal leading-relaxed">
+            Automated AI document cross-examination &amp; ASYCUDA clearance stream for Sri Lankan apparel exports.
+          </p>
+</div>
+<!-- Quick Action Buttons -->
+<div class="flex flex-wrap items-center gap-space-sm pt-space-xs">
+<button class="group inline-flex items-center justify-center gap-space-xs bg-primary-container text-surface px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-medium shadow-sm hover:bg-primary transition-all duration-150 active:scale-[0.99]" onclick="triggerIngestModal()" type="button">
+<span class="material-symbols-outlined text-[18px] transition-transform group-hover:rotate-90 duration-200">add</span>
+<span class="">+ Ingest New Dossier</span>
+</button>
+<button class="inline-flex items-center justify-center gap-space-xs bg-surface-container-lowest/80 hover:bg-surface-container-lowest backdrop-blur-md text-on-surface px-space-md py-2.5 rounded-lg font-label-md text-label-md font-medium shadow-sm transition-all duration-150" type="button">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">file_download</span>
+<span class="">Download Batch Manifest</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Key Telemetry & KPI Cards (Mercury-style Calm Density) -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md mb-space-xl">
+<!-- Card 1: Total Processed -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">Total Processed</span>
+<span class="material-symbols-outlined text-outline text-[20px]">inventory_2</span>
+</div>
+<div>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-display-lg text-headline-lg lg:text-display-lg text-on-surface font-semibold tracking-tight">1,428</span>
+<span class="font-label-md text-label-md text-outline">dossiers</span>
+</div>
+<div class="mt-space-sm flex items-center gap-space-xs">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-secondary-container/20 text-secondary font-numeric-data text-numeric-data">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+            18.4%
+          </span>
+<span class="font-body-sm text-body-sm text-outline">vs prior month cycle</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Autonomous Green Lane -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">Autonomous Green Lane</span>
+<span class="material-symbols-outlined text-secondary text-[20px]">verified</span>
+</div>
+<div>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-display-lg text-headline-lg lg:text-display-lg text-secondary font-semibold tracking-tight">95.2%</span>
+</div>
+<div class="mt-space-sm flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-outline">Zero-touch auto-certified</span>
+<div class="w-16 bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 95.2%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 3: Action Required (Strict: Calm Violet/Deep Slate only, NO warm tones) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">Action Required</span>
+<span class="material-symbols-outlined text-tertiary-container text-[20px]">rule</span>
+</div>
+<div>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-display-lg text-headline-lg lg:text-display-lg text-on-surface font-semibold tracking-tight">3</span>
+<span class="font-label-md text-label-md text-outline">consignments</span>
+</div>
+<div class="mt-space-sm flex items-center gap-space-xs">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+            Review Pending
+          </span>
+<span class="font-body-sm text-body-sm text-outline">Tolerance check</span>
+</div>
+</div>
+</div>
+<!-- Card 4: Average Clearance Time -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">Avg Clearance Speed</span>
+<span class="material-symbols-outlined text-outline text-[20px]">speed</span>
+</div>
+<div>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-display-lg text-headline-lg lg:text-display-lg text-on-surface font-semibold tracking-tight">1m 42s</span>
+</div>
+<div class="mt-space-sm flex items-center gap-space-xs">
+<span class="inline-flex items-center text-secondary font-numeric-data text-numeric-data font-semibold">
+            8.8x faster
+          </span>
+<span class="font-body-sm text-body-sm text-outline">than manual broker queue</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Active Consignment Pipeline Table Container -->
+<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden mb-space-xl">
+<!-- Header of the Table Component -->
+<div class="px-space-lg py-space-md bg-surface-container-lowest flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Active Consignment Pipeline</h2>
+<p class="font-body-sm text-body-sm text-outline">Live ASYCUDA clearing corridor: Katunayake (CMB) &amp; Colombo Port CICT</p>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="font-label-sm text-label-sm text-outline uppercase font-semibold">Filter Channel:</span>
+<div class="inline-flex bg-surface-container-low p-0.5 rounded-lg">
+<button class="px-space-sm py-1 font-label-sm text-label-sm font-semibold rounded bg-surface-container-lowest text-on-surface shadow-sm" type="button">All (4)</button>
+<button class="px-space-sm py-1 font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface" type="button">Green Lane</button>
+<button class="px-space-sm py-1 font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface" type="button">Flags</button>
+</div>
+</div>
+</div>
+<!-- The Pipeline Data Grid -->
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="py-3 px-space-lg font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">Consignment ID</th>
+<th class="py-3 px-space-lg font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">Consignee &amp; Buyer</th>
+<th class="py-3 px-space-lg font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">Documents</th>
+<th class="py-3 px-space-lg font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">AI Status</th>
+<th class="py-3 px-space-lg font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">Clearance Channel</th>
+<th class="py-3 px-space-lg font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Row 1: Weight Variance Flag (Calm Violet Theme) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3.5 px-space-lg">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container">inventory</span>
+<span class="font-numeric-data text-numeric-data font-semibold text-on-surface">CLX-8A31F4D2</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">AWB 603-8821-4901</span>
+</td>
+<td class="py-3.5 px-space-lg">
+<div class="font-title-md text-body-md font-medium text-on-surface">MAS Holdings (Pvt) Ltd</div>
+<div class="font-body-sm text-body-sm text-outline flex items-center gap-1">
+<span class="">→</span>
+<span class="">Marks &amp; Spencer UK</span>
+<span class="text-outline-variant">•</span>
+<span class="">Apparel Knits</span>
+</div>
+</td>
+<td class="py-3.5 px-space-lg">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-numeric-data text-numeric-data text-on-surface-variant font-medium">
+<span class="material-symbols-outlined text-[14px]">description</span>
+                5 docs
+              </span>
+</td>
+<td class="py-3.5 px-space-lg">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+                Review Required (Weight Variance)
+              </span>
+</td>
+<td class="py-3.5 px-space-lg">
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Green Lane</span>
+<span class="font-numeric-data text-numeric-data text-outline">88.4%</span>
+</div>
+<div class="w-24 bg-surface-container-high h-1 rounded-full overflow-hidden mt-1">
+<div class="bg-primary-container h-full rounded-full" style="width: 88.4%;"></div>
+</div>
+</td>
+<td class="py-3.5 px-space-lg text-right">
+<button class="inline-flex items-center gap-1 bg-surface-container-high hover:bg-surface-container text-on-surface px-space-sm py-1.5 rounded-lg font-label-md text-label-md font-medium transition-colors" onclick="inspectConsignment('CLX-8A31F4D2')" type="button">
+<span class="">Inspect Dossier</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</td>
+</tr>
+<!-- Row 2: Reconciled Emerald -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3.5 px-space-lg">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-secondary">inventory</span>
+<span class="font-numeric-data text-numeric-data font-semibold text-on-surface">CLX-7F19B8C1</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">BL COSU630198421</span>
+</td>
+<td class="py-3.5 px-space-lg">
+<div class="font-title-md text-body-md font-medium text-on-surface">Brandix Apparel Solutions</div>
+<div class="font-body-sm text-body-sm text-outline flex items-center gap-1">
+<span class="">→</span>
+<span class="">Victoria's Secret US</span>
+<span class="text-outline-variant">•</span>
+<span class="">Woven Undergarments</span>
+</div>
+</td>
+<td class="py-3.5 px-space-lg">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-numeric-data text-numeric-data text-on-surface-variant font-medium">
+<span class="material-symbols-outlined text-[14px]">description</span>
+                4 docs
+              </span>
+</td>
+<td class="py-3.5 px-space-lg">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container/20 text-secondary font-label-sm text-label-sm font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-secondary"></span>
+                Reconciled • Certified
+              </span>
+</td>
+<td class="py-3.5 px-space-lg">
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Expedited Green</span>
+<span class="font-numeric-data text-numeric-data text-secondary">100%</span>
+</div>
+<div class="w-24 bg-surface-container-high h-1 rounded-full overflow-hidden mt-1">
+<div class="bg-secondary h-full rounded-full" style="width: 100%;"></div>
+</div>
+</td>
+<td class="py-3.5 px-space-lg text-right">
+<button class="inline-flex items-center gap-1 bg-surface-container-lowest hover:bg-surface-container text-on-surface px-space-sm py-1.5 rounded-lg font-label-md text-label-md font-medium transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">code</span>
+<span class="">Export XML</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Verification Pending (Calm Slate Theme) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3.5 px-space-lg">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-outline">inventory</span>
+<span class="font-numeric-data text-numeric-data font-semibold text-on-surface">CLX-99B224E0</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">BL ONEYCMB992140</span>
+</td>
+<td class="py-3.5 px-space-lg">
+<div class="font-title-md text-body-md font-medium text-on-surface">Hirdaramani Industries</div>
+<div class="font-body-sm text-body-sm text-outline flex items-center gap-1">
+<span class="">→</span>
+<span class="">Patagonia Inc.</span>
+<span class="text-outline-variant">•</span>
+<span class="">Organic Cotton Fleeces</span>
+</div>
+</td>
+<td class="py-3.5 px-space-lg">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-numeric-data text-numeric-data text-on-surface-variant font-medium">
+<span class="material-symbols-outlined text-[14px]">description</span>
+                6 docs
+              </span>
+</td>
+<td class="py-3.5 px-space-lg">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-outline"></span>
+                Verification Pending
+              </span>
+</td>
+<td class="py-3.5 px-space-lg">
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Standard Green</span>
+<span class="font-numeric-data text-numeric-data text-outline">Queued</span>
+</div>
+<div class="w-24 bg-surface-container-high h-1 rounded-full overflow-hidden mt-1">
+<div class="bg-outline-variant h-full rounded-full" style="width: 45%;"></div>
+</div>
+</td>
+<td class="py-3.5 px-space-lg text-right">
+<button class="inline-flex items-center gap-1 bg-surface-container-high hover:bg-surface-container text-on-surface px-space-sm py-1.5 rounded-lg font-label-md text-label-md font-medium transition-colors" onclick="inspectConsignment('CLX-99B224E0')" type="button">
+<span class="">Inspect Dossier</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</td>
+</tr>
+<!-- Row 4: Reconciled Emerald -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3.5 px-space-lg">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-secondary">inventory</span>
+<span class="font-numeric-data text-numeric-data font-semibold text-on-surface">CLX-31C44F19</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">AWB 074-2991-8812</span>
+</td>
+<td class="py-3.5 px-space-lg">
+<div class="font-title-md text-body-md font-medium text-on-surface">Teejay Lanka PLC</div>
+<div class="font-body-sm text-body-sm text-outline flex items-center gap-1">
+<span class="">→</span>
+<span class="">Target Corp</span>
+<span class="text-outline-variant">•</span>
+<span class="">Knitted Fabric Consignment</span>
+</div>
+</td>
+<td class="py-3.5 px-space-lg">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-numeric-data text-numeric-data text-on-surface-variant font-medium">
+<span class="material-symbols-outlined text-[14px]">description</span>
+                3 docs
+              </span>
+</td>
+<td class="py-3.5 px-space-lg">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container/20 text-secondary font-label-sm text-label-sm font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-secondary"></span>
+                Reconciled • Certified
+              </span>
+</td>
+<td class="py-3.5 px-space-lg">
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Expedited Green</span>
+<span class="font-numeric-data text-numeric-data text-secondary">100%</span>
+</div>
+<div class="w-24 bg-surface-container-high h-1 rounded-full overflow-hidden mt-1">
+<div class="bg-secondary h-full rounded-full" style="width: 100%;"></div>
+</div>
+</td>
+<td class="py-3.5 px-space-lg text-right">
+<button class="inline-flex items-center gap-1 bg-surface-container-lowest hover:bg-surface-container text-on-surface px-space-sm py-1.5 rounded-lg font-label-md text-label-md font-medium transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">code</span>
+<span class="">Export XML</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Subtle Summary Footer -->
+<div class="p-space-md bg-surface-container-low/50 flex flex-col sm:flex-row items-center justify-between gap-space-sm font-body-sm text-body-sm text-outline">
+<div class="flex items-center gap-space-sm">
+<span class="">Showing 4 active consignments under live supervision</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="h-2 w-2 rounded-full bg-secondary"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Real-time ASYCUDA sync stream active</span>
+</div>
+</div>
+</section>
+<!-- Bottom Telemetry & Regulatory Gazette Strip -->
+<section class="w-full bg-surface-container-lowest rounded-xl p-space-md lg:p-space-lg shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-space-md">
+<!-- Gazette Notice -->
+<div class="flex items-start sm:items-center gap-space-sm">
+<div class="p-2 rounded-lg bg-surface-container text-primary-container shrink-0">
+<span class="material-symbols-outlined text-[22px]">policy</span>
+</div>
+<div>
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="font-title-md text-body-md font-semibold text-on-surface">Sri Lanka Customs Gazette 2024/09 Compliant</span>
+<span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-on-surface-variant font-medium">HS Rev 2024-V2</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">
+          Automated export validation rules active. View the latest clearance directives in 
+          <a class="text-primary hover:underline font-medium inline-flex items-center gap-0.5" href="#">
+            Tariff Circular SLC-8891
+            <span class="material-symbols-outlined text-[14px]">north_east</span>
+</a>.
+        </p>
+</div>
+</div>
+<!-- Port & Air Cargo Latency Nodes -->
+<div class="flex flex-wrap items-center gap-space-md w-full lg:w-auto justify-start lg:justify-end shrink-0">
+<!-- BIA Terminal Ping -->
+<div class="flex items-center gap-space-xs bg-surface-container-low px-space-sm py-1.5 rounded-lg">
+<span class="material-symbols-outlined text-[18px] text-outline">flight_takeoff</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">BIA Air Cargo</span>
+<span class="font-numeric-data text-numeric-data text-secondary font-semibold">2ms</span>
+</div>
+<!-- CICT Colombo Port Ping -->
+<div class="flex items-center gap-space-xs bg-surface-container-low px-space-sm py-1.5 rounded-lg">
+<span class="material-symbols-outlined text-[18px] text-outline">sailing</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Colombo Port CICT</span>
+<span class="font-numeric-data text-numeric-data text-secondary font-semibold">5ms</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container-low px-space-sm py-1.5 rounded-lg">
+<span class="material-symbols-outlined text-[18px] text-secondary">encrypted</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">TLS 1.3 Strict</span>
+</div>
+</div>
+</section>
+</div>
+<script>
+  function inspectConsignment(id) {
+    const feedback = document.createElement('div');
+    feedback.className = 'fixed bottom-6 right-6 z-50 bg-inverse-surface text-inverse-on-surface px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 transition-all duration-300';
+    feedback.innerHTML = `
+      <span class="material-symbols-outlined text-secondary text-[20px]">sync</span>
+      <span class="font-label-md text-label-md">Opening Review Workspace for <strong>${id}</strong>...</span>
+    `;
+    document.body.appendChild(feedback);
+    setTimeout(() => {
+      feedback.style.opacity = '0';
+      setTimeout(() => feedback.remove(), 300);
+    }, 2200);
+  }
+
+  function triggerIngestModal() {
+    const feedback = document.createElement('div');
+    feedback.className = 'fixed bottom-6 right-6 z-50 bg-on-surface text-surface px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 transition-all duration-300';
+    feedback.innerHTML = `
+      <span class="material-symbols-outlined text-primary-fixed text-[20px]">upload_file</span>
+      <span class="font-label-md text-label-md">ASYCUDA Ingestion Engine Ready: Drop export manifest (.XML, .PDF)</span>
+    `;
+    document.body.appendChild(feedback);
+    setTimeout(() => {
+      feedback.style.opacity = '0';
+      setTimeout(() => feedback.remove(), 300);
+    }, 2500);
+  }
+</script></div></main><footer class="w-full bg-surface-container-lowest py-space-lg shadow-[0_-1px_6px_rgba(0,0,0,0.02)]"><div class="max-w-7xl mx-auto px-margin flex flex-col sm:flex-row items-center justify-between gap-space-sm text-center sm:text-left"><div class="font-body-sm text-body-sm text-on-surface-variant">© 2025 ClearanceX Ltd. • ASYCUDA Customs Intelligence Gateway • Sri Lanka</div><div class="flex items-center gap-space-md font-label-md text-label-md text-outline"><span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-secondary"></span> Colombo Port Customs Core V3.14</span><span class="">SLC-WCO Compliant</span></div></div></footer>
+
+</body></html>
