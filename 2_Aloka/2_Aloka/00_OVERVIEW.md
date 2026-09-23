@@ -20,7 +20,7 @@ You own the **reasoning brain** of ClearanceX. Your engine takes Nadija's raw ex
 | ~~02~~ | ~~Mock API Endpoints~~ — ✅ **DONE BY NADIJA — skip this** | ~~MUST~~ | ~~2–3 hours~~ |
 | 03 | Synthetic Data Generator | MUST | 3–4 hours |
 | ~~04~~ | ~~Knowledge Graph Construction~~ — ✅ **DONE** | ~~MUST~~ | ~~3–4 hours~~ |
-| 05 | Discrepancy Detection Engine | MUST | 3–4 hours |
+| ~~05~~ | ~~Discrepancy Detection Engine~~ — ✅ **DONE** | ~~MUST~~ | ~~3–4 hours~~ |
 | 06 | Layer 2: Reasoning Chain Generator | MUST | 2–3 hours |
 | 07 | Layer 3: Confidence Decomposition | MUST | 1–2 hours |
 | 08 | Layer 4: Counterfactual Generator | MUST | 2–3 hours |
