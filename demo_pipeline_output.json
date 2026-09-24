@@ -1,0 +1,697 @@
+{
+  "commercial_invoice": {
+    "document_id": "invoice_001",
+    "document_type": "commercial_invoice",
+    "classification_confidence": 0.97,
+    "classification_evidence": [
+      "invoice",
+      "unit price",
+      "total amount"
+    ],
+    "entities": [
+      {
+        "entity_type": "INVOICE_NUMBER",
+        "value": "INV-2024-1023",
+        "normalized_value": "INV20241023",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          45,
+          120,
+          280,
+          145
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "CONSIGNEE_NAME",
+        "value": "ABC Textiles Ltd",
+        "normalized_value": "ABC Textiles Ltd",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          200,
+          320,
+          225
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "GROSS_WEIGHT",
+        "value": "450.00 KG",
+        "normalized_value": 450.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          350,
+          550,
+          375
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "NET_WEIGHT",
+        "value": "420.00 KG",
+        "normalized_value": 420.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          380,
+          550,
+          405
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "PACKAGE_COUNT",
+        "value": "25 Cartons",
+        "normalized_value": 25,
+        "unit": "cartons",
+        "page": 1,
+        "bbox": [
+          400,
+          410,
+          550,
+          435
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "INCOTERM",
+        "value": "FOB Colombo",
+        "normalized_value": "FOB",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          300,
+          200,
+          325
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "TOTAL_AMOUNT",
+        "value": "45,230.00 USD",
+        "normalized_value": 45230.0,
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          400,
+          500,
+          580,
+          530
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      }
+    ],
+    "raw_ocr": [
+      {
+        "text": "Gross Weight: 450.00 KG",
+        "page": 1,
+        "bbox": [
+          100,
+          340,
+          560,
+          380
+        ],
+        "ocr_confidence": 0.98
+      }
+    ],
+    "processing_time_ms": 1200,
+    "errors": []
+  },
+  "packing_list": {
+    "document_id": "packing_001",
+    "document_type": "packing_list",
+    "classification_confidence": 0.97,
+    "classification_evidence": [
+      "invoice",
+      "unit price",
+      "total amount"
+    ],
+    "entities": [
+      {
+        "entity_type": "INVOICE_NUMBER",
+        "value": "INV-2024-1023",
+        "normalized_value": "INV20241023",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          45,
+          120,
+          280,
+          145
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "CONSIGNEE_NAME",
+        "value": "ABC Textiles Ltd",
+        "normalized_value": "ABC Textiles Ltd",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          200,
+          320,
+          225
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "GROSS_WEIGHT",
+        "value": "450.00 KG",
+        "normalized_value": 450.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          350,
+          550,
+          375
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "NET_WEIGHT",
+        "value": "420.00 KG",
+        "normalized_value": 420.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          380,
+          550,
+          405
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "PACKAGE_COUNT",
+        "value": "25 Cartons",
+        "normalized_value": 25,
+        "unit": "cartons",
+        "page": 1,
+        "bbox": [
+          400,
+          410,
+          550,
+          435
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "INCOTERM",
+        "value": "FOB Colombo",
+        "normalized_value": "FOB",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          300,
+          200,
+          325
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "TOTAL_AMOUNT",
+        "value": "45,230.00 USD",
+        "normalized_value": 45230.0,
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          400,
+          500,
+          580,
+          530
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      }
+    ],
+    "raw_ocr": [
+      {
+        "text": "Gross Weight: 450.00 KG",
+        "page": 1,
+        "bbox": [
+          100,
+          340,
+          560,
+          380
+        ],
+        "ocr_confidence": 0.98
+      }
+    ],
+    "processing_time_ms": 1200,
+    "errors": []
+  },
+  "awb": {
+    "document_id": "awb_001",
+    "document_type": "awb",
+    "classification_confidence": 0.97,
+    "classification_evidence": [
+      "invoice",
+      "unit price",
+      "total amount"
+    ],
+    "entities": [
+      {
+        "entity_type": "INVOICE_NUMBER",
+        "value": "INV-2024-1023",
+        "normalized_value": "INV20241023",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          45,
+          120,
+          280,
+          145
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "CONSIGNEE_NAME",
+        "value": "ABC Textiles Ltd",
+        "normalized_value": "ABC Textiles Ltd",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          200,
+          320,
+          225
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "GROSS_WEIGHT",
+        "value": "450.00 KG",
+        "normalized_value": 450.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          350,
+          550,
+          375
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "NET_WEIGHT",
+        "value": "420.00 KG",
+        "normalized_value": 420.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          380,
+          550,
+          405
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "PACKAGE_COUNT",
+        "value": "25 Cartons",
+        "normalized_value": 25,
+        "unit": "cartons",
+        "page": 1,
+        "bbox": [
+          400,
+          410,
+          550,
+          435
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "INCOTERM",
+        "value": "FOB Colombo",
+        "normalized_value": "FOB",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          300,
+          200,
+          325
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "TOTAL_AMOUNT",
+        "value": "45,230.00 USD",
+        "normalized_value": 45230.0,
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          400,
+          500,
+          580,
+          530
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      }
+    ],
+    "raw_ocr": [
+      {
+        "text": "Gross Weight: 450.00 KG",
+        "page": 1,
+        "bbox": [
+          100,
+          340,
+          560,
+          380
+        ],
+        "ocr_confidence": 0.98
+      }
+    ],
+    "processing_time_ms": 1200,
+    "errors": []
+  },
+  "bill_of_lading": {
+    "document_id": "bol_001",
+    "document_type": "bl",
+    "classification_confidence": 0.97,
+    "classification_evidence": [
+      "invoice",
+      "unit price",
+      "total amount"
+    ],
+    "entities": [
+      {
+        "entity_type": "INVOICE_NUMBER",
+        "value": "INV-2024-1023",
+        "normalized_value": "INV20241023",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          45,
+          120,
+          280,
+          145
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "CONSIGNEE_NAME",
+        "value": "ABC Textiles Ltd",
+        "normalized_value": "ABC Textiles Ltd",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          200,
+          320,
+          225
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "GROSS_WEIGHT",
+        "value": "450.00 KG",
+        "normalized_value": 450.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          350,
+          550,
+          375
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "NET_WEIGHT",
+        "value": "420.00 KG",
+        "normalized_value": 420.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          380,
+          550,
+          405
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "PACKAGE_COUNT",
+        "value": "25 Cartons",
+        "normalized_value": 25,
+        "unit": "cartons",
+        "page": 1,
+        "bbox": [
+          400,
+          410,
+          550,
+          435
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "INCOTERM",
+        "value": "FOB Colombo",
+        "normalized_value": "FOB",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          300,
+          200,
+          325
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "TOTAL_AMOUNT",
+        "value": "45,230.00 USD",
+        "normalized_value": 45230.0,
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          400,
+          500,
+          580,
+          530
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      }
+    ],
+    "raw_ocr": [
+      {
+        "text": "Gross Weight: 450.00 KG",
+        "page": 1,
+        "bbox": [
+          100,
+          340,
+          560,
+          380
+        ],
+        "ocr_confidence": 0.98
+      }
+    ],
+    "processing_time_ms": 1200,
+    "errors": []
+  },
+  "delivery_order": {
+    "document_id": "do_001",
+    "document_type": "delivery_order",
+    "classification_confidence": 0.97,
+    "classification_evidence": [
+      "invoice",
+      "unit price",
+      "total amount"
+    ],
+    "entities": [
+      {
+        "entity_type": "INVOICE_NUMBER",
+        "value": "INV-2024-1023",
+        "normalized_value": "INV20241023",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          45,
+          120,
+          280,
+          145
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "CONSIGNEE_NAME",
+        "value": "ABC Textiles Ltd",
+        "normalized_value": "ABC Textiles Ltd",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          200,
+          320,
+          225
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "GROSS_WEIGHT",
+        "value": "450.00 KG",
+        "normalized_value": 450.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          350,
+          550,
+          375
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "NET_WEIGHT",
+        "value": "420.00 KG",
+        "normalized_value": 420.0,
+        "unit": "kg",
+        "page": 1,
+        "bbox": [
+          400,
+          380,
+          550,
+          405
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "PACKAGE_COUNT",
+        "value": "25 Cartons",
+        "normalized_value": 25,
+        "unit": "cartons",
+        "page": 1,
+        "bbox": [
+          400,
+          410,
+          550,
+          435
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "INCOTERM",
+        "value": "FOB Colombo",
+        "normalized_value": "FOB",
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          50,
+          300,
+          200,
+          325
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      },
+      {
+        "entity_type": "TOTAL_AMOUNT",
+        "value": "45,230.00 USD",
+        "normalized_value": 45230.0,
+        "unit": null,
+        "page": 1,
+        "bbox": [
+          400,
+          500,
+          580,
+          530
+        ],
+        "extraction_confidence": 0.8,
+        "classification_confidence": 0.97,
+        "normalization_warning": false
+      }
+    ],
+    "raw_ocr": [
+      {
+        "text": "Gross Weight: 450.00 KG",
+        "page": 1,
+        "bbox": [
+          100,
+          340,
+          560,
+          380
+        ],
+        "ocr_confidence": 0.98
+      }
+    ],
+    "processing_time_ms": 1200,
+    "errors": []
+  }
+}
