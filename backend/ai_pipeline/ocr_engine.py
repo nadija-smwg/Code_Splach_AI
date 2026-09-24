@@ -1,12 +1,13 @@
-from paddleocr import PaddleOCR
-from dataclasses import dataclass
-from pdf2image import convert_from_path
+import os
 import json
 import logging
-import os
+from dataclasses import dataclass
+from pdf2image import convert_from_path
 
-# Fix for PaddlePaddle 3.x on Windows CPU
+# Fix for PaddlePaddle 3.x on Windows CPU — MUST be set before paddleocr import
 os.environ["FLAGS_use_onednn"] = "0"
+
+from paddleocr import PaddleOCR
 
 logger = logging.getLogger(__name__)
 
