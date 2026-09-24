@@ -2,17 +2,90 @@
 from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import Response
 from typing import List
-import uuid, os
+import uuid, os, dataclasses
 
 router = APIRouter(prefix="/api")
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# ── Shared graph builder helper ────────────────────────────────────────
+# Used by /graph, /discrepancies, /asycuda-export, /audit-trail to build
+# a consistent knowledge graph from mock pipeline output.
+
+def _build_demo_graph(shipment_id: str):
+    """
+    Runs MockPipeline on the demo PDFs and builds the knowledge graph.
+    Returns (kb, documents) where kb is a KnowledgeBuilder and documents is
+    the list of pipeline result dicts.
+    """
+    from backend.ai_pipeline.mock_pipeline import MockPipeline
+    from backend.reasoning.knowledge_builder import KnowledgeBuilder
+    from backend.xai_types import ExtractedEntity
+
+    mp = MockPipeline()
+    demo_docs = [
+        ("demo/commercial_invoice.pdf", "doc_001"),
+        ("demo/packing_list.pdf",       "doc_002"),
+        ("demo/awb.pdf",                "doc_003"),
+    ]
+    documents = [mp.process_document(path, doc_id) for path, doc_id in demo_docs]
+
+    kb = KnowledgeBuilder()
+    for doc in documents:
+        kb.add_document_node(doc["document_id"], doc["document_type"])
+
+    def to_entity(e: dict) -> ExtractedEntity:
+        return ExtractedEntity(
+            entity_type=e["entity_type"],
+            value=e["value"],
+            normalized_value=e.get("normalized_value", e["value"]),
+            unit=e.get("unit"),
+            page=e.get("page", 1),
+            bbox=e.get("bbox", []),
+            extraction_confidence=e.get("extraction_confidence", 0.9),
+            ocr_text=e.get("value", ""),
+        )
+
+    # Build cross-document MUST_MATCH edges for shared fields
+    # GROSS_WEIGHT: invoice vs awb (intentional discrepancy: 450.0 vs 448.5)
+    inv_gw  = next((e for e in documents[0]["entities"] if e["entity_type"] == "GROSS_WEIGHT"), None)
+    awb_gw  = next((e for e in documents[2]["entities"] if e["entity_type"] == "GROSS_WEIGHT"), None)
+    pl_gw   = next((e for e in documents[1]["entities"] if e["entity_type"] == "GROSS_WEIGHT"), None)
+
+    if inv_gw:
+        kb.add_entity_node("n_inv_gw", to_entity(inv_gw), "doc_001")
+    if awb_gw:
+        kb.add_entity_node("n_awb_gw", to_entity(awb_gw), "doc_003")
+    if pl_gw:
+        kb.add_entity_node("n_pl_gw",  to_entity(pl_gw),  "doc_002")
+
+    if inv_gw and awb_gw:
+        kb.add_relationship("n_inv_gw", "n_awb_gw", "MUST_MATCH")
+    if inv_gw and pl_gw:
+        kb.add_relationship("n_inv_gw", "n_pl_gw", "MUST_MATCH")
+
+    # CONSIGNEE_NAME: invoice vs awb ("ABC Textiles Ltd" vs "ABC Textiles Ltd.")
+    inv_cn  = next((e for e in documents[0]["entities"] if e["entity_type"] == "CONSIGNEE_NAME"), None)
+    awb_cn  = next((e for e in documents[2]["entities"] if e["entity_type"] == "CONSIGNEE_NAME"), None)
+
+    if inv_cn:
+        kb.add_entity_node("n_inv_cn", to_entity(inv_cn), "doc_001")
+    if awb_cn:
+        kb.add_entity_node("n_awb_cn", to_entity(awb_cn), "doc_003")
+    if inv_cn and awb_cn:
+        kb.add_relationship("n_inv_cn", "n_awb_cn", "MUST_MATCH")
+
+    return kb, documents
+
+
+# ======================================================================
+# POST /api/shipments/upload
+# ======================================================================
+
 @router.post("/shipments/upload")
 async def upload_shipment(files: List[UploadFile] = File(...)):
     from fastapi import HTTPException
 
-    # Validate all files are PDFs before processing any
     for file in files:
         if not file.filename.lower().endswith(".pdf"):
             raise HTTPException(
@@ -21,7 +94,6 @@ async def upload_shipment(files: List[UploadFile] = File(...)):
             )
 
     shipment_id = str(uuid.uuid4())
-    # Save to uploads/{shipment_id}/ subfolder (per-shipment)
     shipment_dir = os.path.join(UPLOAD_DIR, shipment_id)
     os.makedirs(shipment_dir, exist_ok=True)
 
@@ -35,141 +107,139 @@ async def upload_shipment(files: List[UploadFile] = File(...)):
 
     return {"shipment_id": shipment_id, "status": "processing", "documents": documents}
 
+
+# ======================================================================
+# GET /api/shipments/{shipment_id}/status
+# ======================================================================
+
 @router.get("/shipments/{shipment_id}/status")
 async def get_shipment_status(shipment_id: str):
     return {
         "shipment_id": shipment_id, "status": "completed", "progress": 100,
         "documents": [
             {"document_id": "doc_001", "filename": "commercial_invoice.pdf", "document_type": "commercial_invoice", "classification_confidence": 0.97},
-            {"document_id": "doc_002", "filename": "packing_list.pdf", "document_type": "packing_list", "classification_confidence": 0.96},
-            {"document_id": "doc_003", "filename": "awb.pdf", "document_type": "awb", "classification_confidence": 0.95}
+            {"document_id": "doc_002", "filename": "packing_list.pdf",       "document_type": "packing_list",       "classification_confidence": 0.96},
+            {"document_id": "doc_003", "filename": "awb.pdf",                "document_type": "awb",                "classification_confidence": 0.95},
         ],
-        "processing_time_ms": 8500
+        "processing_time_ms": 3150,
     }
+
+
+# ======================================================================
+# GET /api/shipments/{shipment_id}/extraction
+# ======================================================================
 
 @router.get("/shipments/{shipment_id}/extraction")
 async def get_extraction(shipment_id: str):
-    return {
-        "shipment_id": shipment_id,
-        "documents": [
-            {"document_id": "doc_001", "document_type": "commercial_invoice", "classification_confidence": 0.97,
-             "entities": [
-                {"entity_type": "INVOICE_NUMBER", "value": "INV-2024-1023", "normalized_value": "INV-2024-1023", "unit": None, "page": 1, "bbox": [45,120,280,145], "extraction_confidence": 0.96, "classification_confidence": 0.97},
-                {"entity_type": "CONSIGNEE_NAME", "value": "ABC Textiles Ltd", "normalized_value": "ABC Textiles Ltd", "unit": None, "page": 1, "bbox": [50,200,320,225], "extraction_confidence": 0.91, "classification_confidence": 0.97},
-                {"entity_type": "GROSS_WEIGHT", "value": "450.00 KG", "normalized_value": 450.0, "unit": "kg", "page": 1, "bbox": [400,350,550,375], "extraction_confidence": 0.94, "classification_confidence": 0.97},
-                {"entity_type": "NET_WEIGHT", "value": "420.00 KG", "normalized_value": 420.0, "unit": "kg", "page": 1, "bbox": [400,380,550,405], "extraction_confidence": 0.93, "classification_confidence": 0.97},
-                {"entity_type": "PACKAGE_COUNT", "value": "25 Cartons", "normalized_value": 25, "unit": "cartons", "page": 1, "bbox": [400,410,550,435], "extraction_confidence": 0.95, "classification_confidence": 0.97},
-                {"entity_type": "INCOTERM", "value": "FOB Colombo", "normalized_value": "FOB", "unit": None, "page": 1, "bbox": [50,300,200,325], "extraction_confidence": 0.92, "classification_confidence": 0.97},
-                {"entity_type": "TOTAL_AMOUNT", "value": "45,230.00 USD", "normalized_value": 45230.0, "unit": None, "page": 1, "bbox": [400,500,580,530], "extraction_confidence": 0.94, "classification_confidence": 0.97}
-             ]},
-            {"document_id": "doc_002", "document_type": "packing_list", "classification_confidence": 0.96,
-             "entities": [
-                {"entity_type": "GROSS_WEIGHT", "value": "450.00 KG", "normalized_value": 450.0, "unit": "kg", "page": 1, "bbox": [350,400,500,425], "extraction_confidence": 0.95, "classification_confidence": 0.96},
-                {"entity_type": "NET_WEIGHT", "value": "420.00 KG", "normalized_value": 420.0, "unit": "kg", "page": 1, "bbox": [350,430,500,455], "extraction_confidence": 0.93, "classification_confidence": 0.96},
-                {"entity_type": "TARE_WEIGHT", "value": "25.00 KG", "normalized_value": 25.0, "unit": "kg", "page": 1, "bbox": [350,460,500,485], "extraction_confidence": 0.90, "classification_confidence": 0.96},
-                {"entity_type": "PACKAGE_COUNT", "value": "25 Cartons", "normalized_value": 25, "unit": "cartons", "page": 1, "bbox": [350,490,500,515], "extraction_confidence": 0.96, "classification_confidence": 0.96}
-             ]},
-            {"document_id": "doc_003", "document_type": "awb", "classification_confidence": 0.95,
-             "entities": [
-                {"entity_type": "AWB_NUMBER", "value": "631-12345678", "normalized_value": "631-12345678", "unit": None, "page": 1, "bbox": [200,50,400,80], "extraction_confidence": 0.97, "classification_confidence": 0.95},
-                {"entity_type": "GROSS_WEIGHT", "value": "448.50 KG", "normalized_value": 448.5, "unit": "kg", "page": 1, "bbox": [350,300,500,325], "extraction_confidence": 0.93, "classification_confidence": 0.95},
-                {"entity_type": "PACKAGE_COUNT", "value": "25 Pieces", "normalized_value": 25, "unit": "pieces", "page": 1, "bbox": [350,330,500,355], "extraction_confidence": 0.94, "classification_confidence": 0.95},
-                {"entity_type": "CONSIGNEE_NAME", "value": "ABC Textiles Ltd.", "normalized_value": "ABC Textiles Ltd.", "unit": None, "page": 1, "bbox": [50,200,350,225], "extraction_confidence": 0.89, "classification_confidence": 0.95}
-             ]}
-        ]
-    }
+    from backend.ai_pipeline.mock_pipeline import MockPipeline
+    mp = MockPipeline()
+    demo_docs = [
+        ("demo/commercial_invoice.pdf", "doc_001"),
+        ("demo/packing_list.pdf",       "doc_002"),
+        ("demo/awb.pdf",                "doc_003"),
+    ]
+    documents = [mp.process_document(path, doc_id) for path, doc_id in demo_docs]
+    # Inject classification_confidence into each entity dict (already present from mock)
+    return {"shipment_id": shipment_id, "documents": documents}
+
+
+# ======================================================================
+# GET /api/shipments/{shipment_id}/graph
+# ======================================================================
 
 @router.get("/shipments/{shipment_id}/graph")
 async def get_knowledge_graph(shipment_id: str):
-    from backend.reasoning.knowledge_builder import KnowledgeBuilder
-    from backend.xai_types import ExtractedEntity
-    
-    kb = KnowledgeBuilder()
-    kb.add_document_node("doc_001", "commercial_invoice")
-    kb.add_document_node("doc_003", "awb")
-    
-    ent1 = ExtractedEntity(entity_type="GROSS_WEIGHT", value="450.0", normalized_value=450.0, unit="KG", page=1, bbox=[400,350,550,375], extraction_confidence=0.94)
-    ent2 = ExtractedEntity(entity_type="GROSS_WEIGHT", value="448.5", normalized_value=448.5, unit="KG", page=1, bbox=[350,300,500,325], extraction_confidence=0.93)
-    ent3 = ExtractedEntity(entity_type="CONSIGNEE_NAME", value="ABC Textiles Ltd", normalized_value="ABC Textiles Ltd", unit=None, page=1, bbox=[50,200,320,225], extraction_confidence=0.91)
-    ent4 = ExtractedEntity(entity_type="CONSIGNEE_NAME", value="ABC Textiles Ltd.", normalized_value="ABC Textiles Ltd.", unit=None, page=1, bbox=[50,200,350,225], extraction_confidence=0.89)
-    
-    kb.add_entity_node("node_w_inv", ent1, "doc_001")
-    kb.add_entity_node("node_w_awb", ent2, "doc_003")
-    kb.add_relationship("node_w_inv", "node_w_awb", "MUST_MATCH")
-    kb.add_entity_node("node_c_inv", ent3, "doc_001")
-    kb.add_entity_node("node_c_awb", ent4, "doc_003")
-    kb.add_relationship("node_c_inv", "node_c_awb", "MUST_MATCH")
-    
+    kb, _ = _build_demo_graph(shipment_id)
     return kb.to_vis_json()
+
+
+# ======================================================================
+# GET /api/shipments/{shipment_id}/discrepancies
+# ======================================================================
 
 @router.get("/shipments/{shipment_id}/discrepancies")
 async def get_discrepancies(shipment_id: str):
-    from backend.reasoning.knowledge_builder import KnowledgeBuilder
     from backend.reasoning.rule_evaluator import RuleEvaluator
     from backend.reasoning.xai_compiler import XAICompiler
-    from backend.xai_types import ExtractedEntity
-    import dataclasses
-    
-    # 1. Mock Extraction Pipeline
-    kb = KnowledgeBuilder()
-    kb.add_document_node("doc_001", "commercial_invoice")
-    kb.add_document_node("doc_003", "awb")
-    
-    ent1 = ExtractedEntity(entity_type="GROSS_WEIGHT", value="450.0", normalized_value=450.0, unit="KG", page=1, bbox=[400,350,550,375], extraction_confidence=0.94)
-    ent2 = ExtractedEntity(entity_type="GROSS_WEIGHT", value="448.5", normalized_value=448.5, unit="KG", page=1, bbox=[350,300,500,325], extraction_confidence=0.93)
-    ent3 = ExtractedEntity(entity_type="CONSIGNEE_NAME", value="ABC Textiles Ltd", normalized_value="ABC Textiles Ltd", unit=None, page=1, bbox=[50,200,320,225], extraction_confidence=0.91)
-    ent4 = ExtractedEntity(entity_type="CONSIGNEE_NAME", value="ABC Textiles Ltd.", normalized_value="ABC Textiles Ltd.", unit=None, page=1, bbox=[50,200,350,225], extraction_confidence=0.89)
-    
-    kb.add_entity_node("node_w_inv", ent1, "doc_001")
-    kb.add_entity_node("node_w_awb", ent2, "doc_003")
-    kb.add_relationship("node_w_inv", "node_w_awb", "MUST_MATCH")
-    
-    kb.add_entity_node("node_c_inv", ent3, "doc_001")
-    kb.add_entity_node("node_c_awb", ent4, "doc_003")
-    kb.add_relationship("node_c_inv", "node_c_awb", "MUST_MATCH")
-    
-    # 2. Neuro-Symbolic Evaluation
-    evaluator = RuleEvaluator(kb.get_graph())
+    from backend.reasoning.audit_trail import build_demo_trail
+
+    kb, documents = _build_demo_graph(shipment_id)
+    graph = kb.get_graph()
+
+    # Seed the audit trail for this shipment
+    build_demo_trail(shipment_id, documents)
+
+    # Neuro-Symbolic Evaluation
+    evaluator = RuleEvaluator(graph)
     failures = evaluator.evaluate()
-    
-    # 3. Compile 4-Layer XAI Payload
-    compiler = XAICompiler(kb.get_graph())
-    
+
+    # Compile 4-Layer XAI Payload
+    compiler = XAICompiler(graph)
     discrepancies = []
     for f in failures:
         xai_block = compiler.compile(f)
         discrepancies.append({
-            "discrepancy_id": f.rule_id,
-            "field": f.rule_id,
-            "severity": "high",
+            "discrepancy_id": f"{f.rule_id}_{f.node_a_id}_{f.node_b_id}",
+            "field": f"{f.node_a_id}|{f.node_b_id}",
+            "rule_id": f.rule_id,
+            "severity": "high" if "NUMERIC" in f.rule_id else "medium",
+            "severity_score": round(1.0 - xai_block.layer3.overall_confidence, 4),
             "status": "open",
-            "xai_block": dataclasses.asdict(xai_block)
+            "value_a": str(f.value_a),
+            "value_b": str(f.value_b),
+            "delta": f.delta,
+            "xai_block": dataclasses.asdict(xai_block),
         })
-        
+
     return {
         "shipment_id": shipment_id,
         "total_discrepancies": len(discrepancies),
-        "discrepancies": discrepancies
+        "discrepancies": discrepancies,
     }
+
+
+# ======================================================================
+# GET /api/shipments/{shipment_id}/audit-trail
+# ======================================================================
 
 @router.get("/shipments/{shipment_id}/audit-trail")
 async def get_audit_trail(shipment_id: str):
+    from backend.reasoning.audit_trail import get_trail, build_demo_trail
+
+    # Seed demo trail if not yet built (e.g. if discrepancies endpoint not called first)
+    trail = get_trail(shipment_id)
+    if trail is None:
+        build_demo_trail(shipment_id, [
+            {"document_id": "doc_001", "document_type": "commercial_invoice", "classification_confidence": 0.97, "entities": []},
+            {"document_id": "doc_002", "document_type": "packing_list",       "classification_confidence": 0.96, "entities": []},
+            {"document_id": "doc_003", "document_type": "awb",                "classification_confidence": 0.95, "entities": []},
+        ])
+        trail = get_trail(shipment_id)
+
     return {
         "shipment_id": shipment_id,
-        "entries": [
-            {"timestamp": "2024-09-14T10:30:01", "module": "classifier", "action": "Classified doc_001 as commercial_invoice", "confidence": 0.97, "outcome": "accepted"},
-            {"timestamp": "2024-09-14T10:30:02", "module": "classifier", "action": "Classified doc_002 as packing_list", "confidence": 0.96, "outcome": "accepted"},
-            {"timestamp": "2024-09-14T10:30:03", "module": "classifier", "action": "Classified doc_003 as awb", "confidence": 0.95, "outcome": "accepted"},
-            {"timestamp": "2024-09-14T10:30:05", "module": "extractor", "action": "Extracted GROSS_WEIGHT=450.00kg from doc_001", "confidence": 0.94, "outcome": "accepted"},
-            {"timestamp": "2024-09-14T10:30:06", "module": "extractor", "action": "Extracted GROSS_WEIGHT=450.00kg from doc_002", "confidence": 0.95, "outcome": "accepted"},
-            {"timestamp": "2024-09-14T10:30:07", "module": "extractor", "action": "Extracted GROSS_WEIGHT=448.50kg from doc_003", "confidence": 0.93, "outcome": "accepted"},
-            {"timestamp": "2024-09-14T10:30:10", "module": "reconciler", "action": "Compared GROSS_WEIGHT across 3 documents", "confidence": 0.72, "outcome": "conflict_detected"},
-            {"timestamp": "2024-09-14T10:30:11", "module": "reconciler", "action": "PL internal check: net+tare=445 != gross=450", "confidence": None, "outcome": "inconsistency_flagged"},
-            {"timestamp": "2024-09-14T10:30:12", "module": "counterfactual", "action": "Generated 3 resolution options", "confidence": None, "outcome": "generated"}
-        ]
+        "total_events": len(trail),
+        "entries": trail,
     }
+
+
+# ======================================================================
+# GET /api/shipments/{shipment_id}/asycuda-export
+# ======================================================================
 
 @router.get("/shipments/{shipment_id}/asycuda-export")
 async def export_asycuda(shipment_id: str):
-    xml = '<?xml version="1.0" encoding="UTF-8"?><CUSDEC><DeclarationHeader><DeclarationType>IM</DeclarationType><DeclarationOffice>LKCMB01</DeclarationOffice></DeclarationHeader><ConsigneeInfo><Name>ABC Textiles Ltd</Name><Address>42 Galle Road, Colombo 03</Address></ConsigneeInfo><TransportInfo><AWBNumber>631-12345678</AWBNumber><GrossWeight unit="KG">450.00</GrossWeight><PackageCount>25</PackageCount></TransportInfo></CUSDEC>'
-    return Response(content=xml, media_type="application/xml", headers={"Content-Disposition": f"attachment; filename=CUSDEC_{shipment_id}.xml"})
+    from backend.reasoning.asycuda_export import generate_cusdec_xml
+
+    try:
+        kb, _ = _build_demo_graph(shipment_id)
+        xml = generate_cusdec_xml(kb.get_graph(), shipment_id)
+    except Exception:
+        from backend.reasoning.asycuda_export import generate_demo_cusdec_xml
+        xml = generate_demo_cusdec_xml(shipment_id)
+
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={"Content-Disposition": f"attachment; filename=CUSDEC_{shipment_id[:8]}.xml"},
+    )

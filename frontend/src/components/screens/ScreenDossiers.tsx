@@ -1,26 +1,104 @@
-import { useState } from 'react';
+import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { uploadShipment } from '../../utils/api';
+import { useShipment } from '../../hooks/useShipment';
 
-interface Props { onTriggerToast: (t: { title: string; message: string }) => void; }
+interface Props { onTriggerToast: (t: { title: string; message: string; type?: 'error' | 'info' | 'success' }) => void; }
+
+interface QueuedFile { name: string; size: string; file: File; status: string; icon: string; }
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function docIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('invoice')) return 'receipt';
+  if (n.includes('awb') || n.includes('airway')) return 'flight_takeoff';
+  if (n.includes('packing') || n.includes('pack')) return 'format_list_numbered';
+  if (n.includes('bill') || n.includes('lading')) return 'directions_boat';
+  if (n.includes('delivery')) return 'local_shipping';
+  return 'description';
+}
 
 export function ScreenDossiers({ onTriggerToast }: Props) {
   const navigate = useNavigate();
+  const { setShipmentId } = useShipment();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [fileStack, setFileStack] = useState([
-    { name: 'Commercial_Invoice_CI-9942.pdf', size: '1.4 MB', status: 'OCR Parsed (14 Lines)', icon: 'receipt' },
-    { name: 'HAWB-88190.pdf', size: '820 KB', status: 'OCR Parsed (Flight UL302)', icon: 'flight_takeoff' },
-    { name: 'Packing_List_PL-402.pdf', size: '1.1 MB', status: '24 Pallets Mapped', icon: 'format_list_numbered' },
-    { name: 'Certificate_of_Origin.pdf', size: '640 KB', status: 'GSP Form A Verified', icon: 'verified' }
-  ]);
+  const [fileStack, setFileStack] = useState<QueuedFile[]>([]);
+  const [progress, setProgress] = useState(0);
 
-  const handleProcessDossier = () => {
+  const addFiles = (incoming: File[]) => {
+    const pdfs = incoming.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    if (pdfs.length !== incoming.length) {
+      onTriggerToast({ title: 'Invalid File Type', message: 'Only PDF files are accepted.', type: 'error' });
+    }
+    setFileStack(prev => {
+      const names = new Set(prev.map(f => f.name));
+      const novel = pdfs.filter(f => !names.has(f.name)).map(f => ({
+        name: f.name,
+        size: formatBytes(f.size),
+        file: f,
+        status: 'Queued for OCR',
+        icon: docIcon(f.name),
+      }));
+      return [...prev, ...novel];
+    });
+    if (pdfs.length > 0) {
+      onTriggerToast({ title: `${pdfs.length} File${pdfs.length > 1 ? 's' : ''} Queued`, message: 'Ready for OCR ingestion pipeline.' });
+    }
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    addFiles(Array.from(e.dataTransfer.files));
+  };
+
+  const handleBrowse = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) addFiles(Array.from(e.target.files));
+  };
+
+  const loadSampleDossier = () => {
+    onTriggerToast({ title: 'Sample Dossier Loaded', message: 'Upload the demo PDFs from the /demo folder to test.' });
+  };
+
+  const handleProcessDossier = async () => {
+    if (fileStack.length === 0) {
+      onTriggerToast({ title: 'No Files', message: 'Please add PDF files before processing.', type: 'error' });
+      return;
+    }
+
     setIsProcessing(true);
-    setTimeout(() => {
+    setProgress(10);
+
+    try {
+      const files = fileStack.map(f => f.file);
+      setProgress(30);
+
+      const response = await uploadShipment(files);
+      setProgress(80);
+
+      setShipmentId(response.shipment_id);
+      setProgress(100);
+
+      onTriggerToast({
+        title: 'Dossier Transmitted',
+        message: `Shipment ${response.shipment_id.slice(0, 8)}... processed — ${response.documents.length} documents ingested.`,
+        type: 'success',
+      });
+
+      setTimeout(() => navigate('/discrepancies'), 800);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Upload failed. Is the backend running?';
+      onTriggerToast({ title: 'Upload Failed', message: msg, type: 'error' });
       setIsProcessing(false);
-      onTriggerToast({ title: 'Dossier Transmitted', message: 'Forwarded to Review Workspace with 99.4% confidence.' });
-      navigate('/review-workspace');
-    }, 1200);
+      setProgress(0);
+    }
   };
 
   return (
@@ -31,7 +109,7 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
             Ingestion Pipeline • Node CMB-04
           </div>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Dossier Ingestion & Automated Multi-Doc Parser</h1>
+          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Dossier Ingestion &amp; Automated Multi-Doc Parser</h1>
           <p className="text-xs md:text-sm text-on-surface-variant max-w-2xl mt-1">
             Drop shipping dossiers to auto-extract structured line items, verify against Sri Lanka Customs schedules, and audit for cross-document consistency.
           </p>
@@ -49,41 +127,48 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
       <div
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setIsDragging(false); onTriggerToast({ title: 'Files Queued', message: 'Initiating Vision Transformer OCR stream...' }); }}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
         className={`relative rounded-xl bg-surface-container-lowest p-8 md:p-10 shadow-sm border-2 border-dashed transition-all cursor-pointer text-center ${isDragging ? 'border-primary bg-primary-fixed/20' : 'border-outline-variant/40 hover:border-primary/50'}`}
       >
+        <input ref={fileInputRef} type="file" multiple accept=".pdf" className="hidden" onChange={handleBrowse} />
         <div className="w-16 h-16 rounded-full bg-primary-fixed/50 flex items-center justify-center mx-auto mb-4 text-primary shadow-sm">
           <span className="material-symbols-outlined text-[32px]">cloud_upload</span>
         </div>
-        <h2 className="text-base font-semibold text-on-surface">Drag & drop shipping dossiers or browse workstation files</h2>
-        <p className="text-xs text-on-surface-variant mt-1 mb-5 max-w-md mx-auto">Multi-page PDF, Scanned TIFF, and EDIFACT manifests supported. Parallel OCR stream starts instantly.</p>
+        <h2 className="text-base font-semibold text-on-surface">Drag &amp; drop shipping dossiers or click to browse</h2>
+        <p className="text-xs text-on-surface-variant mt-1 mb-5 max-w-md mx-auto">Multi-page PDF supported. Parallel OCR stream starts instantly.</p>
         <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl mx-auto mb-6 text-xs text-on-surface-variant">
           {[
-            { icon: 'description', label: 'Commercial Invoice' },
-            { icon: 'inventory_2', label: 'Packing List' },
-            { icon: 'flight_takeoff', label: 'House Airway Bill (HAWB)' },
-            { icon: 'directions_boat', label: 'Bill of Lading (B/L)' },
+            { icon: 'description',             label: 'Commercial Invoice' },
+            { icon: 'inventory_2',             label: 'Packing List' },
+            { icon: 'flight_takeoff',          label: 'Air Waybill (AWB)' },
+            { icon: 'directions_boat',         label: 'Bill of Lading (B/L)' },
           ].map((t) => (
             <span key={t.label} className="px-3 py-1 rounded-full bg-surface-container-high flex items-center gap-1">
               <span className="material-symbols-outlined text-primary text-[14px]">{t.icon}</span> {t.label}
             </span>
           ))}
         </div>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button onClick={() => onTriggerToast({ title: 'Native File Picker', message: 'Select your export paperwork from desktop.' })}
-            className="bg-primary text-white hover:bg-primary-container px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 shadow-md transition-all active:scale-95">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-primary text-white hover:bg-primary-container px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 shadow-md transition-all active:scale-95"
+          >
             <span className="material-symbols-outlined text-[16px]">folder_open</span> Browse Files
           </button>
-          <button onClick={() => onTriggerToast({ title: 'MAS LK-7704 Ingested', message: 'Loaded 4 high-res export documents into OCR pipeline.' })}
-            className="bg-surface-container-low hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shadow-sm">
+          <button
+            onClick={loadSampleDossier}
+            className="bg-surface-container-low hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shadow-sm"
+          >
             <span className="material-symbols-outlined text-secondary text-[16px]">auto_stories</span>
-            Load Sample Dossier (MAS Holdings LK-7704)
+            Load Sample Dossier
           </button>
         </div>
       </div>
 
-      {/* Pre-Check Matrix + Queued Stack */}
+      {/* Queued Stack + Process Button */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Pre-Check Matrix */}
         <div className="lg:col-span-6 bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-4">
           <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
             <div className="flex items-center gap-2.5">
@@ -92,19 +177,19 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-on-surface">Pre-Check Matrix Engine</h3>
-                <p className="text-[11px] text-on-surface-variant">Automated validation against Sri Lanka Customs Regulatory rules</p>
+                <p className="text-[11px] text-on-surface-variant">Automated validation against Sri Lanka Customs rules</p>
               </div>
             </div>
             <span className="bg-secondary-container/20 text-on-secondary-container text-xs px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span> 4 Passed
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span> 4 Checks
             </span>
           </div>
           <div className="space-y-2 text-xs">
             {[
-              { label: 'HS Code 6109.10 Concordance', desc: 'Cotton apparel harmonized between Commercial Invoice and HAWB cargo description.' },
+              { label: 'HS Code Concordance', desc: 'Cotton apparel harmonized between Commercial Invoice and AWB cargo description.' },
               { label: 'Incoterms & Apportionment', desc: 'Ocean freight breakdown mapped without duty base variance (CIF Colombo).' },
-              { label: 'TIN/EORI Registry Live', desc: 'Declarant TIN LK-1029482910 validated with Inland Revenue Department.' },
-              { label: 'Tare Weight Tolerance', desc: 'Gross weight 14,820 kg aligns with container VGM within SOLAS margin.' },
+              { label: 'TIN/EORI Registry', desc: 'Declarant TIN validated with Inland Revenue Department.' },
+              { label: 'Weight Tolerance Check', desc: 'Cross-document weight comparison queued for Rule Evaluator.' },
             ].map((item) => (
               <div key={item.label} className="bg-surface-container-low rounded-lg p-3 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-2">
@@ -114,12 +199,13 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
                     <p className="text-on-surface-variant mt-0.5">{item.desc}</p>
                   </div>
                 </div>
-                <span className="text-secondary font-semibold bg-secondary-container/20 px-2 py-0.5 rounded shrink-0">Verified</span>
+                <span className="text-secondary font-semibold bg-secondary-container/20 px-2 py-0.5 rounded shrink-0">Ready</span>
               </div>
             ))}
           </div>
         </div>
 
+        {/* File Stack + Submit */}
         <div className="lg:col-span-6 bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-4">
           <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
             <div className="flex items-center gap-2.5">
@@ -128,50 +214,58 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-on-surface">Queued Dossier Stack</h3>
-                <p className="text-[11px] text-on-surface-variant">Batch LK-7704-EXPORT • MAS Holdings Ltd</p>
+                <p className="text-[11px] text-on-surface-variant">{fileStack.length} document{fileStack.length !== 1 ? 's' : ''} queued</p>
               </div>
             </div>
-            <button onClick={() => { setFileStack([]); onTriggerToast({ title: 'Stack Cleared', message: 'Ready for new paperwork ingest.' }); }}
-              className="text-xs text-outline hover:text-on-surface transition-colors">Clear All</button>
+            <button onClick={() => setFileStack([])} className="text-xs text-outline hover:text-on-surface transition-colors">Clear All</button>
           </div>
-          <div className="space-y-2">
-            {fileStack.map((file, idx) => (
-              <div key={idx} className="bg-surface-container-low rounded-lg p-2.5 px-3 flex items-center justify-between text-xs shadow-sm">
-                <div className="flex items-center gap-3 truncate">
-                  <div className="w-8 h-8 rounded bg-primary-fixed/30 text-primary flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-[18px]">{file.icon}</span>
-                  </div>
-                  <div className="truncate">
-                    <div className="font-semibold text-on-surface truncate">{file.name}</div>
-                    <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-0.5">
-                      <span>{file.size}</span><span>•</span>
-                      <span className="text-secondary font-medium">{file.status}</span>
+
+          {fileStack.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-xs text-on-surface-variant gap-2">
+              <span className="material-symbols-outlined text-[32px] text-outline">inbox</span>
+              <span>No files queued. Drop PDFs above to begin.</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {fileStack.map((file, idx) => (
+                <div key={idx} className="bg-surface-container-low rounded-lg p-2.5 px-3 flex items-center justify-between text-xs shadow-sm">
+                  <div className="flex items-center gap-3 truncate">
+                    <div className="w-8 h-8 rounded bg-primary-fixed/30 text-primary flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[18px]">{file.icon}</span>
+                    </div>
+                    <div className="truncate">
+                      <div className="font-semibold text-on-surface truncate">{file.name}</div>
+                      <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-0.5">
+                        <span>{file.size}</span><span>•</span>
+                        <span className="text-secondary font-medium">{file.status}</span>
+                      </div>
                     </div>
                   </div>
+                  <button onClick={() => setFileStack(prev => prev.filter((_, i) => i !== idx))}
+                    className="p-1 hover:bg-surface-container rounded text-outline hover:text-error">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
                 </div>
-                <button onClick={() => navigate('/review-workspace')} className="p-1 hover:bg-surface-container rounded text-outline hover:text-on-surface">
-                  <span className="material-symbols-outlined text-[16px]">visibility</span>
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="p-3 bg-surface-container-low rounded-lg flex flex-col gap-1 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-on-surface flex items-center gap-1">
-                <span className="material-symbols-outlined text-secondary text-[16px]">shield</span> Overall Confidence
-              </span>
-              <span className="font-bold text-secondary font-mono">99.4% Cross-Audit</span>
+              ))}
             </div>
-            <div className="w-full bg-surface-container-highest rounded-full h-2 overflow-hidden mt-1">
-              <div className="bg-secondary h-2 rounded-full" style={{ width: '99.4%' }}></div>
+          )}
+
+          {/* Progress bar */}
+          {isProcessing && (
+            <div className="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+              <div className="bg-primary h-1.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
             </div>
-          </div>
-          <button onClick={handleProcessDossier} disabled={isProcessing}
-            className="w-full bg-primary hover:bg-primary-container text-white py-3 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95">
+          )}
+
+          <button
+            onClick={handleProcessDossier}
+            disabled={isProcessing || fileStack.length === 0}
+            className="w-full bg-primary hover:bg-primary-container text-white py-3 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <span className={`material-symbols-outlined text-[18px] ${isProcessing ? 'animate-spin' : ''}`}>
               {isProcessing ? 'sync' : 'bolt'}
             </span>
-            <span>{isProcessing ? 'Transmitting to ASYCUDA Enclave...' : `Process Dossier (${fileStack.length} Documents)`}</span>
+            <span>{isProcessing ? 'Transmitting to AI Pipeline...' : `Process Dossier (${fileStack.length} Document${fileStack.length !== 1 ? 's' : ''})`}</span>
           </button>
         </div>
       </div>

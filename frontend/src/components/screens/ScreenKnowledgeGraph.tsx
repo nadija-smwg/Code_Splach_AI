@@ -1,21 +1,143 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { getGraph } from '../../utils/api';
+import { useShipment } from '../../hooks/useShipment';
+import type { GraphData, GraphNode } from '../../types';
 
-interface Props { onTriggerToast: (t: { title: string; message: string }) => void; }
+interface Props { onTriggerToast: (t: { title: string; message: string; type?: 'error' | 'info' | 'success' }) => void; }
+
+const VIS_OPTIONS = {
+  nodes: {
+    shape: 'box',
+    borderRadius: 8,
+    font: { face: 'Inter', size: 12, color: '#f1f5f9' },
+    margin: { top: 8, right: 12, bottom: 8, left: 12 },
+    shadow: true,
+  },
+  edges: {
+    smooth: { enabled: true, type: 'curvedCW', roundness: 0.2 },
+    font: { face: 'Inter', size: 10, color: '#94a3b8', align: 'middle' },
+    arrows: { to: { enabled: true, scaleFactor: 0.6 } },
+    width: 1.5,
+  },
+  physics: {
+    enabled: true,
+    stabilization: { enabled: true, iterations: 200 },
+    barnesHut: { gravitationalConstant: -3000, springLength: 140 },
+  },
+  interaction: {
+    hover: true,
+    tooltipDelay: 100,
+    navigationButtons: false,
+    keyboard: false,
+  },
+};
+
+function nodeColor(node: GraphNode): { background: string; border: string; highlight: { background: string; border: string } } {
+  if (node.type === 'document') {
+    return { background: '#1a2466', border: '#6366f1', highlight: { background: '#252580', border: '#818cf8' } };
+  }
+  return { background: '#14402e', border: '#10b981', highlight: { background: '#1a5c40', border: '#34d399' } };
+}
 
 export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
-  // selectedNode state reserved for future topology highlight feature
-  const [_selectedNode, setSelectedNode] = useState('conflict');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { shipmentId } = useShipment();
+  const [graphData, setGraphData] = useState<GraphData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [nodeCount, setNodeCount] = useState(0);
+  const [edgeCount, setEdgeCount] = useState(0);
+
+  const activeId = shipmentId ?? 'demo-shipment';
+
+  // Fetch graph data
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    getGraph(activeId)
+      .then(data => {
+        setGraphData(data);
+        setNodeCount(data.nodes.length);
+        setEdgeCount(data.edges.length);
+      })
+      .catch(err => setError(err.message || 'Failed to load graph from backend.'))
+      .finally(() => setLoading(false));
+  }, [activeId]);
+
+  // Render vis.js network
+  useEffect(() => {
+    if (!graphData || !containerRef.current || loading) return;
+
+    let network: import('vis-network').Network | null = null;
+
+    import('vis-network').then(({ Network }) => {
+      import('vis-data').then(({ DataSet }) => {
+        if (!containerRef.current) return;
+
+        const nodes = new DataSet(
+          graphData.nodes.map(n => ({
+            id: n.id,
+            label: n.label,
+            color: nodeColor(n),
+            title: `Type: ${n.type}\nID: ${n.id}`,
+            shape: n.type === 'document' ? 'box' : 'ellipse',
+            font: { color: '#f1f5f9', face: 'Inter', size: 12 },
+          }))
+        );
+
+        const edges = new DataSet(
+          graphData.edges.map((e, i) => ({
+            id: `edge_${i}`,
+            from: e.from,
+            to: e.to,
+            label: e.label || '',
+            color: e.label === 'MUST_MATCH'
+              ? { color: '#f59e0b', highlight: '#fbbf24' }
+              : { color: '#475569', highlight: '#94a3b8' },
+            dashes: e.label === 'EXTRACTED_FROM',
+            width: e.label === 'MUST_MATCH' ? 2 : 1.5,
+          }))
+        );
+
+        network = new Network(containerRef.current!, { nodes, edges }, VIS_OPTIONS);
+
+        network.on('selectNode', (params) => {
+          if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            const found = graphData.nodes.find(n => n.id === nodeId);
+            if (found) setSelectedNode(found);
+          }
+        });
+
+        network.on('deselectNode', () => setSelectedNode(null));
+      });
+    });
+
+    return () => {
+      network?.destroy();
+    };
+  }, [graphData, loading]);
+
+  const handleExport = () => {
+    if (!graphData) return;
+    const blob = new Blob([JSON.stringify(graphData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `graph_${activeId.slice(0, 8)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    onTriggerToast({ title: 'Graph Exported', message: 'Full node JSON-LD downloaded.', type: 'success' });
+  };
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="text-xs font-semibold text-primary uppercase tracking-wider">Topology Live • Core Relational Map</div>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Customs Entity Knowledge Graph & Relational Map</h1>
-          <p className="text-xs md:text-sm text-on-surface-variant mt-1">Multi-document cross-reference & declaration lineage graph under active Sri Lanka ASYCUDA clearance dossier.</p>
+          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Customs Entity Knowledge Graph &amp; Relational Map</h1>
+          <p className="text-xs md:text-sm text-on-surface-variant mt-1">Multi-document cross-reference &amp; declaration lineage graph under active ASYCUDA clearance dossier.</p>
         </div>
-        <button onClick={() => onTriggerToast({ title: 'Graph Exported', message: 'Full node JSON-LD downloaded.' })}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-primary text-white rounded-lg shadow-sm hover:bg-primary/90">
+        <button onClick={handleExport} className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-primary text-white rounded-lg shadow-sm hover:bg-primary/90">
           <span className="material-symbols-outlined text-[16px]">download</span>
           <span>Export Graph JSON</span>
         </button>
@@ -23,63 +145,40 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 items-start">
         {/* Graph Canvas */}
-        <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm relative overflow-hidden min-h-[580px] flex flex-col">
+        <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm relative overflow-hidden min-h-[540px] flex flex-col">
           <div className="p-3 border-b border-outline-variant/30 bg-surface-container-low/50 flex items-center justify-between text-xs">
-            <span className="font-semibold text-on-surface">7 Nodes • 8 Edges • 1 Conflict Flag</span>
+            <span className="font-semibold text-on-surface">{nodeCount} Nodes • {edgeCount} Edges</span>
             <div className="flex items-center gap-3 text-[11px] text-on-surface-variant font-medium">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary"></span> Document</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-secondary"></span> Entity</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Conflict</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#6366f1]"></span> Document</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#10b981]"></span> Entity</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400"></span> MUST_MATCH</span>
             </div>
           </div>
-          <div className="relative flex-1 w-full h-[500px] p-6 overflow-hidden"
-            style={{ backgroundImage: 'radial-gradient(#dcd9dc 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-              <line stroke="#3525cd" strokeWidth="2" x1="100" y1="80" x2="260" y2="80" />
-              <line stroke="#006c4a" strokeWidth="2" x1="390" y1="80" x2="520" y2="80" />
-              <path d="M 320 120 C 320 180, 140 180, 140 240" fill="none" stroke="#cbd5e1" strokeDasharray="4,4" strokeWidth="1.5" />
-              <path d="M 340 120 C 340 180, 480 180, 480 240" fill="none" stroke="#cbd5e1" strokeDasharray="4,4" strokeWidth="1.5" />
-              <path d="M 200 280 C 280 340, 380 340, 440 280" fill="none" stroke="#b45309" strokeDasharray="5,5" strokeWidth="2" />
-            </svg>
-            {/* Conflict badge */}
-            <div onClick={() => setSelectedNode('conflict')}
-              className="absolute top-[280px] left-[260px] z-20 bg-amber-50 px-3 py-1 rounded-full text-[11px] font-semibold text-amber-800 border border-amber-300 shadow-sm flex items-center gap-1 cursor-pointer hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined text-[14px] text-amber-700">warning</span>
-              <span>Gross Weight Discrepancy (+12.8 kg)</span>
+
+          {loading && (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3 text-on-surface-variant">
+                <span className="material-symbols-outlined text-[40px] animate-spin text-primary">sync</span>
+                <span className="text-sm">Loading knowledge graph...</span>
+              </div>
             </div>
-            {/* Node 1 */}
-            <div className="absolute top-[40px] left-[20px] z-10 w-40 bg-surface-container-lowest rounded-xl border border-secondary/40 p-3 shadow-md">
-              <div className="text-[10px] font-bold text-secondary uppercase">Manufacturer</div>
-              <div className="text-xs font-bold text-on-surface truncate">MAS Holdings Ltd</div>
-              <div className="text-[10px] text-outline font-mono">TIN: 1029482910</div>
+          )}
+
+          {error && (
+            <div className="flex-1 flex items-center justify-center p-8">
+              <div className="text-center">
+                <span className="material-symbols-outlined text-error text-[40px]">error</span>
+                <p className="text-sm text-on-surface mt-2 font-semibold">Failed to load graph</p>
+                <p className="text-xs text-on-surface-variant mt-1">{error}</p>
+              </div>
             </div>
-            {/* Node 2 */}
-            <div className="absolute top-[35px] left-[240px] z-10 w-44 bg-primary-fixed/40 rounded-xl border-2 border-primary p-3 shadow-md ring-4 ring-primary/10">
-              <div className="text-[10px] font-bold text-primary uppercase">Primary Dossier</div>
-              <div className="text-xs font-bold text-on-surface font-mono">CLX-8A31F4D2</div>
-              <div className="text-[10px] text-outline">Colombo Port Berth 04</div>
-            </div>
-            {/* Node 3 */}
-            <div className="absolute top-[40px] left-[480px] z-10 w-40 bg-surface-container-lowest rounded-xl border border-secondary/40 p-3 shadow-md">
-              <div className="text-[10px] font-bold text-secondary uppercase">Consignee</div>
-              <div className="text-xs font-bold text-on-surface truncate">Marks & Spencer UK</div>
-              <div className="text-[10px] text-outline font-mono">EORI: GB982736154</div>
-            </div>
-            {/* Node 4 */}
-            <div onClick={() => setSelectedNode('conflict')}
-              className="absolute top-[220px] left-[40px] z-10 w-44 bg-surface-container-lowest rounded-xl border-2 border-amber-500 p-3 shadow-md cursor-pointer hover:scale-105 transition-transform">
-              <div className="text-[10px] font-bold text-amber-700 uppercase">Invoice CI-99201</div>
-              <div className="text-xs font-bold text-on-surface mt-0.5">Gross Wt: 485.0 kg</div>
-              <div className="text-[10px] text-outline">Net Wt: 440.0 kg</div>
-            </div>
-            {/* Node 5 */}
-            <div onClick={() => setSelectedNode('conflict')}
-              className="absolute top-[220px] left-[420px] z-10 w-44 bg-surface-container-lowest rounded-xl border-2 border-amber-500 p-3 shadow-md cursor-pointer hover:scale-105 transition-transform">
-              <div className="text-[10px] font-bold text-amber-700 uppercase">Packing List PL-4801</div>
-              <div className="text-xs font-bold text-on-surface mt-0.5">Gross Wt: 472.2 kg</div>
-              <div className="text-[10px] text-outline">Net Wt: 440.0 kg</div>
-            </div>
-          </div>
+          )}
+
+          <div
+            ref={containerRef}
+            className={`flex-1 w-full min-h-[480px] ${loading || error ? 'hidden' : ''}`}
+            style={{ background: 'radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)' }}
+          />
         </div>
 
         {/* Inspector Panel */}
@@ -87,33 +186,49 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
           <div className="border-b border-outline-variant/20 pb-3 flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase text-outline">Topology Inspector</span>
-              <h2 className="text-sm font-bold text-on-surface">Variance Conflict</h2>
+              <h2 className="text-sm font-bold text-on-surface">{selectedNode ? selectedNode.label : 'Select a Node'}</h2>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Review Req.</span>
+            {selectedNode && (
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${selectedNode.type === 'document' ? 'bg-primary-fixed text-primary' : 'bg-secondary-container/30 text-secondary'}`}>
+                {selectedNode.type}
+              </span>
+            )}
           </div>
-          <div className="bg-surface-container-low p-3 rounded-lg space-y-1.5">
-            <div className="flex justify-between"><span className="text-outline">Source:</span><span className="font-semibold text-primary font-mono">Invoice CI-99201</span></div>
-            <div className="flex justify-between"><span className="text-outline">Target:</span><span className="font-semibold text-primary font-mono">Packing List PL-4801</span></div>
-            <div className="flex justify-between pt-1 border-t border-outline-variant/20">
-              <span className="text-outline">Match Confidence:</span><span className="font-semibold text-secondary">98.6%</span>
+
+          {selectedNode ? (
+            <div className="bg-surface-container-low p-3 rounded-lg space-y-2">
+              <div className="flex justify-between"><span className="text-outline">Node ID:</span><span className="font-semibold font-mono text-on-surface text-[10px]">{selectedNode.id}</span></div>
+              <div className="flex justify-between"><span className="text-outline">Type:</span><span className="font-semibold text-on-surface">{selectedNode.type}</span></div>
+              {selectedNode.document_type && (
+                <div className="flex justify-between"><span className="text-outline">Doc Type:</span><span className="font-semibold text-on-surface">{selectedNode.document_type}</span></div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-surface-container-low p-3 rounded-lg flex flex-col items-center gap-2 py-8">
+              <span className="material-symbols-outlined text-outline text-[32px]">touch_app</span>
+              <p className="text-on-surface-variant text-center">Click any node in the graph to inspect its properties and provenance data.</p>
+            </div>
+          )}
+
+          {/* Legend */}
+          <div className="border-t border-outline-variant/20 pt-3 space-y-2">
+            <div className="text-[10px] uppercase text-outline font-semibold">Edge Types</div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-amber-400"></div>
+              <span className="text-on-surface-variant">MUST_MATCH constraint</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-[#475569] border-dashed border-t"></div>
+              <span className="text-on-surface-variant">EXTRACTED_FROM link</span>
             </div>
           </div>
-          <div className="border border-outline-variant/30 rounded-lg overflow-hidden">
-            <table className="w-full text-left text-[11px]">
-              <thead className="bg-surface-container-low text-outline font-semibold">
-                <tr><th className="p-2">Field</th><th className="p-2">CI</th><th className="p-2">PL</th><th className="p-2 text-right">Delta</th></tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/20 font-mono">
-                <tr className="bg-amber-50/60"><td className="p-2 font-sans font-medium">Gross</td><td className="p-2">485.0</td><td className="p-2">472.2</td><td className="p-2 text-right text-amber-700 font-bold">+12.8kg</td></tr>
-                <tr><td className="p-2 font-sans font-medium">Net</td><td className="p-2">440.0</td><td className="p-2">440.0</td><td className="p-2 text-right text-secondary">0.0</td></tr>
-                <tr><td className="p-2 font-sans font-medium">Cartons</td><td className="p-2">24</td><td className="p-2">24</td><td className="p-2 text-right text-secondary">Match</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <button onClick={() => onTriggerToast({ title: 'Auto-Reconciled', message: 'Tare offset generated in Knowledge Graph cache.' })}
-            className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold flex items-center justify-center gap-1.5 shadow-sm">
-            <span className="material-symbols-outlined text-[16px]">sync</span>
-            <span>Auto-Reconcile Variance</span>
+
+          <button
+            onClick={() => { setLoading(true); getGraph(activeId).then(d => { setGraphData(d); setNodeCount(d.nodes.length); setEdgeCount(d.edges.length); }).finally(() => setLoading(false)); }}
+            className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold flex items-center justify-center gap-1.5 shadow-sm text-xs"
+          >
+            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            <span>Refresh Graph</span>
           </button>
         </div>
       </div>

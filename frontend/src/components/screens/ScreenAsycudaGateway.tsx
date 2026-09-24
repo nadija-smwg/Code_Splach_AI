@@ -1,10 +1,30 @@
 import { useState } from 'react';
+import { exportAsycuda, downloadBlob } from '../../utils/api';
+import { useShipment } from '../../hooks/useShipment';
 
-interface Props { onTriggerToast: (t: { title: string; message: string }) => void; }
+interface Props { onTriggerToast: (t: { title: string; message: string; type?: 'error' | 'info' | 'success' }) => void; }
 
 export function ScreenAsycudaGateway({ onTriggerToast }: Props) {
+  const { shipmentId } = useShipment();
   const [payloadTab, setPayloadTab] = useState('structured');
   const [selectedDec, setSelectedDec] = useState('DEC-LK-2025-0891');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const activeId = shipmentId ?? 'demo-shipment';
+
+  const handleDownloadCusdec = async () => {
+    setIsDownloading(true);
+    try {
+      const blob = await exportAsycuda(activeId);
+      downloadBlob(blob, `CUSDEC_${activeId.slice(0, 8)}.xml`);
+      onTriggerToast({ title: 'CUSDEC XML Downloaded', message: 'Dynamic ASYCUDA declaration generated from knowledge graph.', type: 'success' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Export failed';
+      onTriggerToast({ title: 'Export Failed', message: msg, type: 'error' });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const declarations = [
     { id: 'DEC-LK-2025-0891', awb: 'AWB-603-8821', consignee: 'MAS Holdings → M&S UK', channel: 'Green (Expedited)', status: 'Acknowledged' },
@@ -29,10 +49,10 @@ export function ScreenAsycudaGateway({ onTriggerToast }: Props) {
             <span className="material-symbols-outlined text-primary text-[16px]">wifi_tethering</span>
             <span>Trigger Gateway Ping</span>
           </button>
-          <button onClick={() => onTriggerToast({ title: 'Audit Certificate Generated', message: 'SHA-256 certificate downloaded.' })}
-            className="px-3.5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-semibold flex items-center gap-1.5 shadow-sm">
-            <span className="material-symbols-outlined text-[16px]">download_for_offline</span>
-            <span>Download Audit Cert</span>
+          <button onClick={handleDownloadCusdec} disabled={isDownloading}
+            className="px-3.5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-60">
+            <span className={`material-symbols-outlined text-[16px] ${isDownloading ? 'animate-spin' : ''}`}>{isDownloading ? 'sync' : 'download_for_offline'}</span>
+            <span>{isDownloading ? 'Generating XML...' : 'Download CUSDEC XML'}</span>
           </button>
         </div>
       </div>

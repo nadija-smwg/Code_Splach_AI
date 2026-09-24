@@ -12,10 +12,18 @@ export const api = axios.create({
 export async function uploadShipment(files: File[]): Promise<UploadResponse> {
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
-  const { data } = await api.post<UploadResponse>('/shipments/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return data;
+  // Try the dossier upload endpoint first; fallback to legacy shipments/upload
+  try {
+    const { data } = await api.post<UploadResponse>('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  } catch {
+    const { data } = await api.post<UploadResponse>('/shipments/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  }
 }
 export async function getShipmentStatus(id: string): Promise<ShipmentStatus> {
   const { data } = await api.get<ShipmentStatus>(`/shipments/${id}/status`);
@@ -33,7 +41,7 @@ export async function getDiscrepancies(id: string): Promise<{ shipment_id: strin
   const { data } = await api.get(`/shipments/${id}/discrepancies`);
   return data;
 }
-export async function getAuditTrail(id: string): Promise<{ shipment_id: string; entries: AuditEntry[] }> {
+export async function getAuditTrail(id: string): Promise<{ shipment_id: string; total_events: number; entries: AuditEntry[] }> {
   const { data } = await api.get(`/shipments/${id}/audit-trail`);
   return data;
 }

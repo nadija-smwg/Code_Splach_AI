@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ShipmentProvider } from './hooks/useShipment';
 
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
@@ -33,6 +34,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ShipmentProvider>
       <div className="min-h-screen flex flex-col bg-background font-sans text-on-surface antialiased">
         <Header onTriggerToast={showToast} />
         <main className="w-full pt-20 flex-1 flex flex-col">
@@ -55,6 +57,7 @@ function App() {
         <Footer />
         <ToastNotification toast={toast} onClose={() => setToast(null)} />
       </div>
+      </ShipmentProvider>
     </BrowserRouter>
   );
 }
