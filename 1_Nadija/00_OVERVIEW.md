@@ -19,14 +19,14 @@ You own the **AI brain** of ClearanceX. Your pipeline takes raw PDF files and pr
 | ~~01~~ | ~~Project Setup (React + Vite + TypeScript)~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ | 
 | ~~02~~ | ~~Environment Setup + PaddleOCR Install~~ — ✅ **DONE** | ~~MUST~~ | ~~1–2 hours~~ |
 | ~~03~~| ~~OCR Integration — Text + Bounding Boxes~~ — ✅ **DONE** | ~~MUST~~ | ~~2–3 hours~~ |
-| 04| Document Classification | MUST | 2–3 hours |
-| 05| Entity Extraction Strategy Decision | MUST | 1 hour |
-| 06| Header Entity Extraction | MUST | 3–4 hours |
-| 07| Table / Line-Item Extraction | SHOULD | 3–4 hours |
-| 08| Confidence Scoring | MUST | 1–2 hours |
-| 09| Canonical Normalization | SHOULD | 2–3 hours |
-| 10| Pipeline Orchestration | MUST | 2–3 hours |
-| 11| Integration Testing + Demo Prep | MUST | 2–3 hours |
+| ~~04~~| ~~Document Classification~~ — ✅ **DONE** | ~~MUST~~ | ~~2–3 hours~~ |
+| ~~05~~| ~~Entity Extraction Strategy Decision~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~06~~| ~~Header Entity Extraction~~ — ✅ **DONE** | ~~MUST~~ | ~~3–4 hours~~ |
+| ~~07~~| ~~Table / Line-Item Extraction~~ — ✅ **DONE** | ~~SHOULD~~ | ~~3–4 hours~~ |
+| ~~08~~| ~~Confidence Scoring~~ — ✅ **DONE** | ~~MUST~~ | ~~1–2 hours~~ |
+| ~~09~~| ~~Canonical Normalization + Dossier Upload~~ — ✅ **DONE** Three-tier: token sort → PostgreSQL cache → Gemini fallback. Deterministic rules for weights/volumes/dates/numbers/identifiers. `POST /api/upload` multi-file dossier endpoint. `GET /api/upload/{dossier_id}/status` polling. `DossierManager` background processing. `norm_cache` + `dossiers` + `dossier_documents` DB tables. | ~~**MUST**~~ | ~~3–4 hours~~ |
+| ~~10~~| ~~Pipeline Orchestration~~ — ✅ **DONE** `AIPipeline.process_document()` wires OCR→Classify→Extract→Normalize→Score. `ConfidenceScorer` called. `MockPipeline` schema-compatible. `test_pipeline.py` + `pipeline_output_sample.json` delivered to Aloka/Kaveen. | ~~MUST~~ | ~~2–3 hours~~ |
+| ~~11~~| ~~Integration Testing + Demo Prep~~ — ✅ **DONE** Syntheic document tests, master schema contract validation, edge case resilience tests, normalizer fallback cache script (`clear_demo_cache.py`), pipeline verifier script (`verify_ai_pipeline.py`), and deterministic demo fallback cache (`demo_cache.json`) are generated and fully verified. | ~~MUST~~ | ~~2–3 hours~~ |
 
 **Total estimated: ~20–28 hours across 3–4 days**
 
@@ -44,7 +44,7 @@ Everything you build must produce this exact JSON structure. Aloka and Kaveen ar
   "entities": [
     {
       "entity_type": "GROSS_WEIGHT",
-      "value": "450.00",
+      "value": "450.00 KG",
       "normalized_value": 450.0,
       "unit": "kg",
       "page": 2,
@@ -74,8 +74,8 @@ Everything you build must produce this exact JSON structure. Aloka and Kaveen ar
 
 | Others Need From You | What | When |
 |---|---|---|
-| Aloka | `ExtractionResult` JSON per document | Phase 09 |
-| Kaveen | `bbox` coordinates for PDF overlay | Phase 05 |
+| Aloka | `ExtractionResult` JSON per document (with `normalized_value`) | Phase 06 onwards (mocks first, real by Phase 10) |
+| Kaveen | `bbox` coordinates for PDF overlay | Phase 06 |
 
 ---
 
@@ -85,14 +85,18 @@ Everything you build must produce this exact JSON structure. Aloka and Kaveen ar
 backend/
   ai_pipeline/
     __init__.py
-    ocr_engine.py          ← Phase 02
-    classifier.py           ← Phase 03
-    entity_extractor.py     ← Phase 05, 06
-    normalizer.py           ← Phase 08
-    pipeline.py             ← Phase 09
-    confidence.py           ← Phase 07
+    ocr_engine.py          ← Phase 03
+    classifier.py           ← Phase 04
+    entity_extractor.py     ← Phase 06, 07
+    normalizer.py           ← Phase 09  ⚠️ populates normalized_value + unit
+    pipeline.py             ← Phase 10
+    confidence.py           ← Phase 08
     models/                 ← model weights/configs
     mock_pipeline.py        ← Already exists (mock for team)
+  data/
+    norm_cache.json         ← Phase 09  Tier 2 persistent LLM cache (auto-created)
+  scripts/
+    clear_demo_cache.py     ← Phase 11  run before live demo to force Tier 3 LLM calls
 ```
 
 > **Rule:** Do NOT modify files outside `backend/ai_pipeline/`. If you need changes elsewhere, coordinate with Kaveen or Aloka.
@@ -104,3 +108,5 @@ backend/
 1. **LayoutLMv3 vs Gemini Vision API:** If fine-tuning LayoutLMv3 takes too long, use Gemini Vision API as primary extractor. Demo quality matters more than model purity.
 2. **PaddleOCR is non-negotiable:** It gives us bounding boxes for free — essential for Layer 1 XAI.
 3. **Don't build training pipelines:** For the hackathon demo, pre-trained + API-based extraction is sufficient.
+4. **Three-tier normalizer (Phase 09):** Tier 1 = token-sort pre-check (zero cost), Tier 2 = local JSON cache (1 ms), Tier 3 = LLM canonicalization on cache miss (persisted immediately). All weights normalize to `kg`, volumes to `cbm`, dates to ISO 8601. Raw `value` is always preserved; standardized form lives in `normalized_value`.
+5. **Clear Tier 2 cache before demo (Phase 11):** Run `clear_demo_cache.py` to remove port/company name entries so judges see Tier 3 LLM calls fire live. Keep numeric unit conversions cached for speed.
