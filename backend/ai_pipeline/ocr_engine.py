@@ -1,13 +1,14 @@
 import os
-import json
 import logging
 from dataclasses import dataclass
-from pdf2image import convert_from_path
 
 # Fix for PaddlePaddle 3.x on Windows CPU — MUST be set before paddleocr import
 os.environ["FLAGS_use_onednn"] = "0"
 
-from paddleocr import PaddleOCR
+try:
+    from paddleocr import PaddleOCR
+except Exception:  # pragma: no cover
+    PaddleOCR = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +36,16 @@ class OcrEngine:
     def __init__(self):
         # Initialize PaddleOCR. use_angle_cls=True handles rotated text.
         # use_gpu=False is safe for broad compatibility, especially on Windows laptops.
+        if PaddleOCR is None:
+            raise ImportError(
+                "PaddleOCR is not installed. Run: py -m pip install paddleocr"
+            )
         self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
     
     def extract(self, pdf_path: str) -> OcrOutput:
         """Extract text + bounding boxes from all pages of a PDF."""
+        from pdf2image import convert_from_path  # lazy import — optional dep
+
         if not os.path.exists(pdf_path):
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
