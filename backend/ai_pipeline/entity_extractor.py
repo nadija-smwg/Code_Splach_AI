@@ -1,23 +1,33 @@
-﻿# backend/ai_pipeline/entity_extractor.py
+# backend/ai_pipeline/entity_extractor.py
 """
-Phase 06 -- Header Entity Extraction
-=====================================
-Hybrid approach (Option C, decided in Phase 05):
-  Step 1  PaddleOCR      -> text + bounding boxes  (Phase 03, done)
-  Step 2  Gemini Vision  -> entity names + values
-  Step 3  map_to_bbox()  -> link Gemini values back to OCR tokens
-  Result  entities with  value, page, bbox, extraction_confidence
+Phase 06 -- Header Entity Extraction  (Hybrid Strategy)
+=========================================================
+Decision (Phase 05, Option C): PaddleOCR local rules first -> Gemini fallback only
+when local extraction cannot reliably find a field.
+
+Architecture
+-------------
+  PaddleOCR (Phase 03)
+      |
+      v
+  LocalExtractor          <- regex / label-match / known patterns
+      |
+      +-- confident? --> accept (no Gemini call)
+      |
+      +-- missing / ambiguous --> GeminiFallback (Vision API, one call per page)
+                                      |
+                                      v
+                               map_to_bbox() --> OCR bounding box
 
 Extraction Responsibility Boundary
------------------------------------
-  THIS FILE  : populates entity["value"]  (raw string, exactly as OCR saw it)
-  normalizer : populates entity["normalized_value"] and entity["unit"]
-  Do NOT normalise, convert units, or clean values here.
+------------------------------------
+  THIS FILE  : populates entity["value"]        <- raw string, as OCR/Gemini saw it
+  normalizer : populates entity["normalized_value"] and entity["unit"]   <- Phase 09
+  Do NOT normalise, convert units, clean identifiers, or format dates here.
 
-Aloka's knowledge graph cross-doc conflict detection relies on:
+Cross-doc conflict fields (Aloka's knowledge graph):
   CROSS_DOCUMENT_FIELDS = [GROSS_WEIGHT, NET_WEIGHT, PACKAGE_COUNT,
                            CONSIGNEE_NAME, SHIPPER_NAME, INCOTERM]
-These 6 fields are the primary conflict triggers -- accuracy is critical.
 
 Author: Nadija (Phase 06)
 """
@@ -28,12 +38,12 @@ import json
 import logging
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Optional
 
 from dotenv import load_dotenv
-
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 from ai_pipeline.ocr_engine import OcrOutput, OcrToken
@@ -43,167 +53,240 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Output contract dataclasses
+# Output contract dataclasses  (unchanged from Phase 05 skeleton)
 # ---------------------------------------------------------------------------
 
 @dataclass
 class ExtractedEntity:
     """
-    One extracted entity from a document.
-    value            <- Phase 06 fills this (raw string exactly as OCR/Gemini saw it)
-    normalized_value <- Phase 09 normalizer fills this
-    unit             <- Phase 09 normalizer fills this
+    One extracted header entity.
+    value            <- Phase 06: raw string exactly as OCR/Gemini saw it
+    normalized_value <- Phase 09: canonical converted form
+    unit             <- Phase 09: unit string
     """
     entity_type: str
     value: str
     page: int
     bbox: list                          # [x1, y1, x2, y2]
     extraction_confidence: float
-    normalized_value: object = None     # filled by Phase 09
-    unit: Optional[str] = None          # filled by Phase 09
+    normalized_value: object = None     # Phase 09 fills this
+    unit: Optional[str] = None          # Phase 09 fills this
 
 
 @dataclass
 class ExtractionResult:
-    """Full extraction output for one document (fed into Aloka knowledge graph)."""
+    """Full extraction result for one document (fed into Aloka's knowledge graph)."""
     document_id: str
     document_type: str
     classification_confidence: float
     entities: list = field(default_factory=list)   # list[ExtractedEntity]
-    raw_ocr: list = field(default_factory=list)    # list[dict] mirroring OcrOutput pages
+    raw_ocr: list = field(default_factory=list)    # list[dict] mirroring OcrOutput
+
+
+@dataclass
+class ExtractionTelemetry:
+    """
+    Hybrid strategy cost telemetry.  Printed at end of each extraction run.
+    """
+    fields_requested: int = 0
+    local_extracted: int = 0
+    gemini_fallback_fields: int = 0
+    gemini_calls: int = 0
+    gemini_recovered: int = 0
+    failed: int = 0
+    elapsed_sec: float = 0.0
+
+    def report(self) -> str:
+        return (
+            f"Fields requested: {self.fields_requested}\n"
+            f"Local extraction: {self.local_extracted}\n"
+            f"Gemini fallback:  {self.gemini_fallback_fields}\n"
+            f"Gemini calls:     {self.gemini_calls}\n"
+            f"Gemini recovered: {self.gemini_recovered}\n"
+            f"Failed:           {self.failed}\n"
+            f"Elapsed:          {self.elapsed_sec:.2f}s"
+        )
 
 
 # ---------------------------------------------------------------------------
-# Gemini prompts -- one per document type
-# Each prompt tells Gemini exactly which fields to find and how to format output.
+# Entity schemas per document type
 # ---------------------------------------------------------------------------
 
+ENTITY_SCHEMAS: dict[str, list[str]] = {
+    "commercial_invoice": [
+        "INVOICE_NUMBER", "INVOICE_DATE", "CONSIGNEE_NAME", "CONSIGNEE_ADDRESS",
+        "SHIPPER_NAME", "INCOTERM", "PAYMENT_TERMS", "TOTAL_AMOUNT",
+        "CURRENCY", "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT",
+    ],
+    "packing_list": [
+        "GROSS_WEIGHT", "NET_WEIGHT", "TARE_WEIGHT", "PACKAGE_COUNT",
+        "VOLUME", "SHIPPING_MARKS",
+    ],
+    "awb": [
+        "AWB_NUMBER", "FLIGHT_NUMBER", "ORIGIN", "DESTINATION",
+        "GROSS_WEIGHT", "PACKAGE_COUNT", "SHIPPER_NAME", "CONSIGNEE_NAME",
+    ],
+    "bl": [
+        "BL_NUMBER", "VESSEL_NAME", "PORT_LOADING", "PORT_DISCHARGE",
+        "GROSS_WEIGHT", "PACKAGE_COUNT", "CONTAINER_NUMBER",
+    ],
+    "freight_invoice": [
+        "INVOICE_NUMBER", "INVOICE_DATE", "CONSIGNEE_NAME", "SHIPPER_NAME",
+        "TOTAL_AMOUNT", "CURRENCY", "BL_NUMBER", "CONTAINER_NUMBER",
+    ],
+    "delivery_order": [
+        "DO_NUMBER", "CONSIGNEE_NAME", "CONTAINER_NUMBER",
+        "GROSS_WEIGHT", "PACKAGE_COUNT", "PORT_DISCHARGE",
+    ],
+    "letter_of_credit": [
+        "LC_NUMBER", "ISSUING_BANK", "BENEFICIARY", "CONSIGNEE_NAME",
+        "TOTAL_AMOUNT", "CURRENCY", "INCOTERM", "EXPIRY_DATE",
+    ],
+}
+
+# Gemini fallback prompts -- one per doc type
 EXTRACTION_PROMPTS: dict[str, str] = {
-    "commercial_invoice": """Extract these fields from this Commercial Invoice image.
-Return ONLY valid JSON with exactly these keys. Use null for any field not found.
-Do not include markdown fences or any other text.
+    "commercial_invoice": """You are extracting fields from a Commercial Invoice.
+Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
+Do not include markdown, explanation, or surrounding text.
+Do NOT normalize: preserve the exact raw value as printed (e.g. "FOB Colombo", "450.00 KG", "60 Days from B/L Date").
 {
-  "INVOICE_NUMBER": "value or null",
-  "INVOICE_DATE": "value or null",
-  "CONSIGNEE_NAME": "value or null",
-  "CONSIGNEE_ADDRESS": "value or null",
-  "SHIPPER_NAME": "value or null",
-  "INCOTERM": "value or null",
-  "PAYMENT_TERMS": "value or null",
-  "TOTAL_AMOUNT": "value or null",
-  "CURRENCY": "value or null",
-  "GROSS_WEIGHT": "value or null",
-  "NET_WEIGHT": "value or null",
-  "PACKAGE_COUNT": "value or null"
+  "INVOICE_NUMBER": null,
+  "INVOICE_DATE": null,
+  "CONSIGNEE_NAME": null,
+  "CONSIGNEE_ADDRESS": null,
+  "SHIPPER_NAME": null,
+  "INCOTERM": null,
+  "PAYMENT_TERMS": null,
+  "TOTAL_AMOUNT": null,
+  "CURRENCY": null,
+  "GROSS_WEIGHT": null,
+  "NET_WEIGHT": null,
+  "PACKAGE_COUNT": null
 }""",
 
-    "packing_list": """Extract these fields from this Packing List image.
-Return ONLY valid JSON with exactly these keys. Use null for any field not found.
-Do not include markdown fences or any other text.
+    "packing_list": """You are extracting fields from a Packing List.
+Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
+Do not include markdown, explanation, or surrounding text.
+Preserve raw values exactly as printed (e.g. "797.00 KG", "14.500 CBM", "240 Ctns").
 {
-  "GROSS_WEIGHT": "value or null",
-  "NET_WEIGHT": "value or null",
-  "TARE_WEIGHT": "value or null",
-  "PACKAGE_COUNT": "value or null",
-  "VOLUME": "value or null",
-  "SHIPPING_MARKS": "value or null"
+  "GROSS_WEIGHT": null,
+  "NET_WEIGHT": null,
+  "TARE_WEIGHT": null,
+  "PACKAGE_COUNT": null,
+  "VOLUME": null,
+  "SHIPPING_MARKS": null
 }""",
 
-    "awb": """Extract these fields from this Air Waybill image.
-Return ONLY valid JSON with exactly these keys. Use null for any field not found.
-Do not include markdown fences or any other text.
+    "awb": """You are extracting fields from an Air Waybill (AWB).
+Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
+Do not include markdown, explanation, or surrounding text.
+Preserve raw values exactly as printed.
 {
-  "AWB_NUMBER": "value or null",
-  "FLIGHT_NUMBER": "value or null",
-  "ORIGIN": "value or null",
-  "DESTINATION": "value or null",
-  "GROSS_WEIGHT": "value or null",
-  "PACKAGE_COUNT": "value or null",
-  "SHIPPER_NAME": "value or null",
-  "CONSIGNEE_NAME": "value or null"
+  "AWB_NUMBER": null,
+  "FLIGHT_NUMBER": null,
+  "ORIGIN": null,
+  "DESTINATION": null,
+  "GROSS_WEIGHT": null,
+  "PACKAGE_COUNT": null,
+  "SHIPPER_NAME": null,
+  "CONSIGNEE_NAME": null
 }""",
 
-    "bl": """Extract these fields from this Bill of Lading image.
-Return ONLY valid JSON with exactly these keys. Use null for any field not found.
-Do not include markdown fences or any other text.
+    "bl": """You are extracting fields from a Bill of Lading.
+Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
+Do not include markdown, explanation, or surrounding text.
+Preserve raw values exactly as printed.
 {
-  "BL_NUMBER": "value or null",
-  "VESSEL_NAME": "value or null",
-  "PORT_LOADING": "value or null",
-  "PORT_DISCHARGE": "value or null",
-  "GROSS_WEIGHT": "value or null",
-  "PACKAGE_COUNT": "value or null",
-  "CONTAINER_NUMBER": "value or null"
+  "BL_NUMBER": null,
+  "VESSEL_NAME": null,
+  "PORT_LOADING": null,
+  "PORT_DISCHARGE": null,
+  "GROSS_WEIGHT": null,
+  "PACKAGE_COUNT": null,
+  "CONTAINER_NUMBER": null
 }""",
 
-    "freight_invoice": """Extract these fields from this Freight Invoice image.
-Return ONLY valid JSON with exactly these keys. Use null for any field not found.
-Do not include markdown fences or any other text.
+    "freight_invoice": """You are extracting fields from a Freight Invoice.
+Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
+Do not include markdown, explanation, or surrounding text.
 {
-  "INVOICE_NUMBER": "value or null",
-  "INVOICE_DATE": "value or null",
-  "CONSIGNEE_NAME": "value or null",
-  "SHIPPER_NAME": "value or null",
-  "TOTAL_AMOUNT": "value or null",
-  "CURRENCY": "value or null",
-  "BL_NUMBER": "value or null",
-  "CONTAINER_NUMBER": "value or null"
+  "INVOICE_NUMBER": null,
+  "INVOICE_DATE": null,
+  "CONSIGNEE_NAME": null,
+  "SHIPPER_NAME": null,
+  "TOTAL_AMOUNT": null,
+  "CURRENCY": null,
+  "BL_NUMBER": null,
+  "CONTAINER_NUMBER": null
 }""",
 
-    "delivery_order": """Extract these fields from this Delivery Order image.
-Return ONLY valid JSON with exactly these keys. Use null for any field not found.
-Do not include markdown fences or any other text.
+    "delivery_order": """You are extracting fields from a Delivery Order.
+Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
+Do not include markdown, explanation, or surrounding text.
 {
-  "DO_NUMBER": "value or null",
-  "CONSIGNEE_NAME": "value or null",
-  "CONTAINER_NUMBER": "value or null",
-  "GROSS_WEIGHT": "value or null",
-  "PACKAGE_COUNT": "value or null",
-  "PORT_DISCHARGE": "value or null"
+  "DO_NUMBER": null,
+  "CONSIGNEE_NAME": null,
+  "CONTAINER_NUMBER": null,
+  "GROSS_WEIGHT": null,
+  "PACKAGE_COUNT": null,
+  "PORT_DISCHARGE": null
 }""",
 
-    "letter_of_credit": """Extract these fields from this Letter of Credit image.
-Return ONLY valid JSON with exactly these keys. Use null for any field not found.
-Do not include markdown fences or any other text.
+    "letter_of_credit": """You are extracting fields from a Letter of Credit.
+Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
+Do not include markdown, explanation, or surrounding text.
 {
-  "LC_NUMBER": "value or null",
-  "ISSUING_BANK": "value or null",
-  "BENEFICIARY": "value or null",
-  "CONSIGNEE_NAME": "value or null",
-  "TOTAL_AMOUNT": "value or null",
-  "CURRENCY": "value or null",
-  "INCOTERM": "value or null",
-  "EXPIRY_DATE": "value or null"
+  "LC_NUMBER": null,
+  "ISSUING_BANK": null,
+  "BENEFICIARY": null,
+  "CONSIGNEE_NAME": null,
+  "TOTAL_AMOUNT": null,
+  "CURRENCY": null,
+  "INCOTERM": null,
+  "EXPIRY_DATE": null
 }""",
 }
 
-# Fallback: if Gemini is called for an unknown doc type, extract these basics
-GENERIC_PROMPT = """Extract any key-value pairs you can find in this shipping document.
-Return ONLY valid JSON. Use null for missing values. Include at minimum:
-{
-  "GROSS_WEIGHT": "value or null",
-  "CONSIGNEE_NAME": "value or null",
-  "PACKAGE_COUNT": "value or null"
-}"""
+# Default fallback bbox when no OCR token matches
+_DEFAULT_BBOX = [0, 0, 0, 0]
 
-# Default bounding box when no OCR match is found
-_DEFAULT_BBOX = [0, 0, 100, 30]
+# Minimum OCR confidence below which a local match is considered unreliable
+_MIN_OCR_CONFIDENCE = 0.60
+
+# Minimum local extraction confidence to skip Gemini
+_LOCAL_CONFIDENCE_GATE = 0.72
 
 
 # ---------------------------------------------------------------------------
-# Utility: map a Gemini value back to the best OCR bounding box
+# Utilities
 # ---------------------------------------------------------------------------
 
-def map_to_bbox(gemini_value: str, ocr_tokens: list, threshold: float = 0.6) -> Optional[OcrToken]:
+def _bbox_union(bboxes: list[list]) -> list:
+    """Return the bounding box that encloses all given [x1,y1,x2,y2] boxes."""
+    if not bboxes:
+        return _DEFAULT_BBOX
+    x1 = min(b[0] for b in bboxes)
+    y1 = min(b[1] for b in bboxes)
+    x2 = max(b[2] for b in bboxes)
+    y2 = max(b[3] for b in bboxes)
+    return [x1, y1, x2, y2]
+
+
+def map_to_bbox(
+    gemini_value: str,
+    ocr_tokens: list,
+    threshold: float = 0.60,
+) -> Optional[OcrToken]:
     """
-    Find the OCR token whose text best matches a Gemini-extracted value.
+    Find the OCR token whose text best matches a Gemini/local-extracted value.
 
-    Scoring:
-      1. Exact substring containment -> score 1.0
-         (handles "Gross Weight: 450.00 KG" containing "450.00 KG")
-      2. Fuzzy SequenceMatcher ratio -> handles minor OCR noise
+    Scoring strategy (highest wins):
+      1. Exact substring containment (value in token text)  -> 1.0
+      2. Token text substring of value (short tokens like "USD") -> 0.85
+      3. Fuzzy SequenceMatcher ratio                        -> 0.0-1.0
 
-    Returns the best-matching OcrToken, or None if nothing exceeds threshold.
+    Returns the best-matching OcrToken or None if below threshold.
     """
     if not ocr_tokens or not gemini_value:
         return None
@@ -214,10 +297,12 @@ def map_to_bbox(gemini_value: str, ocr_tokens: list, threshold: float = 0.6) -> 
 
     for token in ocr_tokens:
         tok_lower = token.text.lower().strip()
+        if not tok_lower:
+            continue
+
         if gv_lower in tok_lower:
             score = 1.0
         elif tok_lower in gv_lower and len(tok_lower) > 3:
-            # token is a substring of the value (e.g. token "USD" inside "45,230 USD")
             score = 0.85
         else:
             score = SequenceMatcher(None, gv_lower, tok_lower).ratio()
@@ -229,53 +314,413 @@ def map_to_bbox(gemini_value: str, ocr_tokens: list, threshold: float = 0.6) -> 
     return best_token if best_score >= threshold else None
 
 
+def _multi_token_bbox(value: str, ocr_tokens: list) -> tuple[list, float]:
+    """
+    When a value may span multiple OCR tokens (e.g. "440.00" and "KG" on separate lines),
+    collect all tokens whose text appears in the value and return their union bbox.
+
+    Returns (bbox, best_ocr_confidence).
+    """
+    if not ocr_tokens or not value:
+        return _DEFAULT_BBOX, 0.0
+
+    val_lower = value.lower()
+    matched: list[OcrToken] = []
+
+    # First try: single token that contains the whole value
+    single = map_to_bbox(value, ocr_tokens)
+    if single:
+        return single.bbox, single.confidence
+
+    # Multi-token: split value on whitespace and find individual tokens
+    parts = value.split()
+    for part in parts:
+        if len(part) < 2:
+            continue
+        tok = map_to_bbox(part, ocr_tokens, threshold=0.80)
+        if tok and tok not in matched:
+            matched.append(tok)
+
+    if matched:
+        return _bbox_union([t.bbox for t in matched]), min(t.confidence for t in matched)
+
+    return _DEFAULT_BBOX, 0.0
+
+
 def _strip_fences(text: str) -> str:
-    """Remove markdown code fences Gemini sometimes adds around JSON."""
+    """Remove markdown code fences Gemini sometimes wraps JSON in."""
     text = text.strip()
-    text = re.sub(r"^`[a-z]*\n?", "", text)
-    text = re.sub(r"\n?`$", "", text)
+    text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
+    text = re.sub(r"\n?```$", "", text)
     return text.strip()
 
 
+def _is_null(v) -> bool:
+    return v is None or str(v).lower().strip() in ("null", "none", "n/a", "", "na")
+
+
 # ---------------------------------------------------------------------------
-# Main extractor class
+# Layer 1: Local rule-based extractor
+# ---------------------------------------------------------------------------
+
+class LocalExtractor:
+    """
+    Extract strongly-structured fields directly from OCR token text using
+    label matching, regex, and known document patterns.
+
+    Returns a dict:  entity_type -> (value_str, confidence, matched_tokens)
+    Where matched_tokens is a list[OcrToken] used for bbox computation.
+    """
+
+    # ── Regex patterns per entity type ───────────────────────────────────
+
+    _PATTERNS: dict[str, list[str]] = {
+        "INVOICE_NUMBER": [
+            r"\b(INV[-/][\d\-]+)\b",
+            r"\b(IN[-/][\w\-]{4,})\b",
+        ],
+        "INVOICE_DATE": [
+            r"\b(\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+            r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
+            r"\s+\d{4})\b",
+            r"\b(\d{4}[-/]\d{2}[-/]\d{2})\b",
+            r"\b(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b",
+        ],
+        "GROSS_WEIGHT": [
+            r"(\d[\d,\.]+\s*(?:KG|kg|Kg|kgs|KGS|kilogram[s]?))\b",
+        ],
+        "NET_WEIGHT": [
+            r"(\d[\d,\.]+\s*(?:KG|kg|Kg|kgs|KGS|kilogram[s]?))\b",
+        ],
+        "TARE_WEIGHT": [
+            r"(\d[\d,\.]+\s*(?:KG|kg|Kg|kgs|KGS))\b",
+        ],
+        "PACKAGE_COUNT": [
+            r"(\d[\d,]*\s*(?:Carton[s]?|Ctn[s]?|pcs?|Piece[s]?|Package[s]?|Box(?:es)?|"
+            r"Pallet[s]?|Unit[s]?|Roll[s]?))\b",
+        ],
+        "CURRENCY": [
+            r"\b(USD|EUR|GBP|JPY|LKR|AUD|CAD|SGD|CHF)\b",
+        ],
+        "TOTAL_AMOUNT": [
+            r"\b(?:USD|EUR|GBP)\s*(\d[\d,\.]+(?:\.\d{2})?)\b",
+            r"(\d[\d,]+\.\d{2})\s*(?:USD|EUR|GBP)",
+        ],
+        "INCOTERM": [
+            # Capture incoterm + optional location e.g. "FOB Colombo"
+            r"\b((?:FOB|CIF|CFR|EXW|DAP|DDP|FCA|CPT|CIP|DAT)(?:\s+[A-Za-z][A-Za-z\s]{1,20})?)\b",
+        ],
+        "AWB_NUMBER": [
+            r"\b(\d{3}[-\s]\d{4}\s?\d{4})\b",
+            r"\b(\d{3}-\d{8})\b",
+        ],
+        "FLIGHT_NUMBER": [
+            r"\b([A-Z]{2}\s*\d{2,4})\b",
+        ],
+        "BL_NUMBER": [
+            r"\b([A-Z]{4}\d{9,12})\b",
+            r"\b(BL[-/][\w\-]{5,})\b",
+        ],
+        "CONTAINER_NUMBER": [
+            r"\b([A-Z]{4}\d{7})\b",
+        ],
+        "VOLUME": [
+            r"(\d[\d,\.]+\s*(?:CBM|m3|M3|cubic\s*m(?:etr(?:e|er)?)?[s]?))\b",
+        ],
+        "PAYMENT_TERMS": [
+            r"(\d+\s*Days?\s*(?:from|after)\s*[\w\s/]+)\b",
+            r"\b(T/T|L/C|D/P|D/A|CAD|Open\s+Account)\b",
+        ],
+        "ORIGIN": [
+            r"(?:From|Origin|Departure):\s*(.+?)(?:\n|$)",
+        ],
+        "DESTINATION": [
+            r"(?:To|Destination|Dest\.?):\s*(.+?)(?:\n|$)",
+        ],
+        "VOLUME": [
+            r"(\d[\d,\.]+\s*(?:CBM|m3|M3|cubic\s*meter[s]?))\b",
+        ],
+    }
+
+    # ── Label-to-entity mapping for nearby-token detection ────────────────
+
+    _LABELS: dict[str, list[str]] = {
+        "INVOICE_NUMBER":    ["invoice no", "invoice number", "inv no", "inv#", "invoice #"],
+        "INVOICE_DATE":      ["invoice date", "date of issue", "issue date", "date"],
+        "CONSIGNEE_NAME":    ["consignee", "consignee name", "bill to", "buyer"],
+        "CONSIGNEE_ADDRESS": ["consignee address", "consignee:", "buyer address"],
+        "SHIPPER_NAME":      ["shipper", "exporter", "seller", "shipped by"],
+        "INCOTERM":          ["incoterm", "incoterms", "terms of sale", "delivery terms"],
+        "PAYMENT_TERMS":     ["payment terms", "payment", "terms of payment"],
+        "TOTAL_AMOUNT":      ["total invoice value", "total amount", "grand total", "invoice total", "total"],
+        "CURRENCY":          ["currency"],
+        "GROSS_WEIGHT":      ["gross weight", "total gross weight", "gross wt", "gross"],
+        "NET_WEIGHT":        ["net weight", "total net weight", "net wt", "net"],
+        "TARE_WEIGHT":       ["tare weight", "tare wt", "tare"],
+        "PACKAGE_COUNT":     ["total cartons", "no. of cartons", "number of packages",
+                              "total pieces", "packages", "cartons", "package count"],
+        "VOLUME":            ["total volume", "volume", "cbm", "total cbm"],
+        "SHIPPING_MARKS":    ["shipping marks", "marks", "marks & numbers"],
+        "AWB_NUMBER":        ["awb number", "awb no", "air waybill", "airwaybill no"],
+        "FLIGHT_NUMBER":     ["flight no", "flight number", "flight"],
+        "ORIGIN":            ["departure airport", "origin", "airport of departure", "from"],
+        "DESTINATION":       ["destination airport", "destination", "airport of destination", "to"],
+        "BL_NUMBER":         ["bl number", "bill of lading no", "b/l no", "b/l number"],
+        "VESSEL_NAME":       ["vessel", "vessel name", "ship name", "m/v", "mv"],
+        "PORT_LOADING":      ["port of loading", "load port", "pol"],
+        "PORT_DISCHARGE":    ["port of discharge", "discharge port", "pod", "destination port"],
+        "CONTAINER_NUMBER":  ["container no", "container number", "ctn no", "cntr"],
+        "DO_NUMBER":         ["delivery order no", "do no", "do number"],
+        "LC_NUMBER":         ["l/c number", "lc no", "letter of credit no", "lc number"],
+        "ISSUING_BANK":      ["issuing bank", "issuing bank name"],
+        "BENEFICIARY":       ["beneficiary", "beneficiary name"],
+        "EXPIRY_DATE":       ["expiry date", "expiry", "valid until", "lc expiry"],
+    }
+
+    def extract(
+        self,
+        entity_types: list[str],
+        ocr_tokens: list,
+        doc_type: str,
+    ) -> dict[str, tuple]:
+        """
+        Try to extract each entity_type from the OCR token list.
+
+        Returns dict:
+            entity_type -> (value_str, confidence, matched_tokens: list[OcrToken])
+            Only includes entities that were found with confidence >= _LOCAL_CONFIDENCE_GATE.
+        """
+        results: dict[str, tuple] = {}
+
+        # Build a flat joined text for regex scanning
+        full_text = " ".join(t.text for t in ocr_tokens)
+
+        for entity_type in entity_types:
+            result = self._try_label_match(entity_type, ocr_tokens, doc_type)
+            if result is None:
+                result = self._try_regex(entity_type, ocr_tokens, full_text)
+            if result:
+                value, conf, tokens = result
+                if conf >= _LOCAL_CONFIDENCE_GATE:
+                    results[entity_type] = (value, conf, tokens)
+
+        return results
+
+    def _try_label_match(
+        self, entity_type: str, ocr_tokens: list, doc_type: str
+    ) -> Optional[tuple]:
+        """
+        Find the label token then grab the value from adjacent tokens.
+        Handles two token styles:
+          a) "Label: VALUE"  -- value is in the same token after the colon
+          b) "Label:"        -- value is in the next 1-3 tokens
+        Returns (value, confidence, [token]) or None.
+        """
+        labels = self._LABELS.get(entity_type, [])
+        if not labels:
+            return None
+
+        for i, token in enumerate(ocr_tokens):
+            # Strip trailing colon for comparison but keep original text
+            tok_cmp = token.text.lower().strip().rstrip(":")
+
+            for label in labels:
+                label_match = (
+                    label == tok_cmp
+                    or label in tok_cmp
+                    or SequenceMatcher(None, label, tok_cmp).ratio() >= 0.85
+                )
+                if not label_match:
+                    continue
+
+                # Style (a): "Label: Value" — value follows colon in same token
+                if ":" in token.text:
+                    colon_val = self._extract_after_colon(token.text, entity_type)
+                    if colon_val:
+                        conf = min(0.88, token.confidence)
+                        return colon_val, conf, [token]
+
+                # Style (b): label is standalone, value is the next non-label token
+                for j in range(i + 1, min(i + 4, len(ocr_tokens))):
+                    candidate = ocr_tokens[j].text.strip()
+                    if self._looks_like_value(candidate, entity_type):
+                        conf = min(0.85, ocr_tokens[j].confidence)
+                        return candidate, conf, [ocr_tokens[j]]
+
+        return None
+
+    def _try_regex(
+        self, entity_type: str, ocr_tokens: list, full_text: str
+    ) -> Optional[tuple]:
+        """
+        Try regex patterns on the full OCR text.  When a match is found,
+        look up which token(s) produced it for bbox.
+        """
+        patterns = self._PATTERNS.get(entity_type, [])
+        for pattern in patterns:
+            m = re.search(pattern, full_text, re.IGNORECASE)
+            if m:
+                value = m.group(1) if m.lastindex else m.group(0)
+                value = value.strip()
+                # Find which token(s) contributed to this match
+                matched_tokens = [
+                    t for t in ocr_tokens
+                    if value.lower() in t.text.lower() or t.text.lower() in value.lower()
+                ]
+                conf = 0.80 if matched_tokens else 0.65
+                if matched_tokens:
+                    # Average OCR confidence of matched tokens weighted toward lower
+                    conf = min(0.90, min(t.confidence for t in matched_tokens) + 0.05)
+                return value, conf, matched_tokens
+        return None
+
+    def _extract_after_colon(self, text: str, entity_type: str) -> Optional[str]:
+        """Extract the part after a colon in 'Label: VALUE' style tokens."""
+        if ":" not in text:
+            return None
+        parts = text.split(":", 1)
+        value = parts[1].strip()
+        if not value or len(value) < 2:
+            return None
+        if self._looks_like_value(value, entity_type):
+            return value
+        return None
+
+    def _looks_like_value(self, candidate: str, entity_type: str) -> bool:
+        """Heuristic: does this candidate look like a real value for this entity?"""
+        c = candidate.strip()
+        if not c or len(c) < 2:
+            return False
+        # Reject if it looks like a label itself
+        lower = c.lower()
+        for labels in self._LABELS.values():
+            for lbl in labels:
+                if SequenceMatcher(None, lbl, lower).ratio() > 0.90:
+                    return False
+
+        weight_like = bool(re.search(r"\d[\d,\.]+\s*(?:KG|kg|kgs|KGS|lbs?|LBS)", c))
+        number_like = bool(re.search(r"\d[\d,\.]+", c))
+        code_like   = bool(re.search(r"\b[A-Z0-9]{3,}\b", c))
+        text_like   = len(c.split()) >= 2
+
+        numeric_fields = {
+            "GROSS_WEIGHT", "NET_WEIGHT", "TARE_WEIGHT", "PACKAGE_COUNT",
+            "TOTAL_AMOUNT", "VOLUME"
+        }
+        if entity_type in numeric_fields:
+            return weight_like or number_like
+        if entity_type in {"CURRENCY"}:
+            return bool(re.match(r"^(USD|EUR|GBP|JPY|LKR|AUD|CAD|SGD|CHF)$", c, re.I))
+        if entity_type in {"INVOICE_NUMBER", "AWB_NUMBER", "BL_NUMBER",
+                           "CONTAINER_NUMBER", "DO_NUMBER", "LC_NUMBER"}:
+            return code_like or bool(re.search(r"[-/]\d+", c))
+        if entity_type in {"CONSIGNEE_NAME", "SHIPPER_NAME", "VESSEL_NAME",
+                           "ISSUING_BANK", "BENEFICIARY"}:
+            return text_like
+        return number_like or text_like or code_like
+
+
+# ---------------------------------------------------------------------------
+# Layer 2: Gemini Vision fallback
+# ---------------------------------------------------------------------------
+
+class GeminiFallback:
+    """
+    Calls Gemini Vision API for fields that local extraction could not find.
+    Groups all missing fields into one prompt per page (one API call per page).
+    """
+
+    def __init__(self, model):
+        self._model = model
+
+    def extract_missing(
+        self,
+        missing_fields: list[str],
+        doc_type: str,
+        page_image,
+    ) -> dict[str, str]:
+        """
+        Ask Gemini for only the missing fields.
+        Returns dict: entity_type -> raw value string (or empty if not found).
+        """
+        if not missing_fields or self._model is None or page_image is None:
+            return {}
+
+        base_prompt = EXTRACTION_PROMPTS.get(doc_type, "")
+        if not base_prompt:
+            logger.warning(f"No Gemini prompt for doc_type='{doc_type}'")
+            return {}
+
+        # Build a focused prompt listing only the missing keys
+        focused_keys = {k: "null" for k in missing_fields}
+        prompt = (
+            f"{base_prompt.split('{')[0]}"   # take the preamble before the JSON
+            f"Return ONLY this JSON, nothing else:\n"
+            + json.dumps(focused_keys, indent=2)
+        )
+
+        try:
+            response = self._model.generate_content([prompt, page_image])
+            raw = _strip_fences(response.text)
+            data: dict = json.loads(raw)
+        except json.JSONDecodeError as e:
+            logger.error(f"Gemini non-JSON response: {e}. Raw: {response.text[:200]!r}")
+            return {}
+        except Exception as e:
+            logger.error(f"Gemini API call failed: {e}")
+            return {}
+
+        results = {}
+        for k, v in data.items():
+            if k in missing_fields and not _is_null(v):
+                results[k] = str(v).strip()
+
+        return results
+
+
+# ---------------------------------------------------------------------------
+# Main EntityExtractor class
 # ---------------------------------------------------------------------------
 
 class EntityExtractor:
     """
-    Header entity extractor using Gemini Vision API + OCR bounding box mapping.
+    Hybrid header entity extractor.
+
+    Phase 06 strategy:
+      1. LocalExtractor  tries all fields via label-match + regex on OCR tokens.
+      2. Fields with confidence >= _LOCAL_CONFIDENCE_GATE are accepted.
+      3. Remaining fields are sent to GeminiFallback (ONE API call per page).
+      4. All found values are mapped to OCR bounding boxes via map_to_bbox().
 
     Usage
     -----
-        from ai_pipeline.entity_extractor import EntityExtractor
-        from ai_pipeline.ocr_engine import OcrEngine
-        from ai_pipeline.classifier import DocumentClassifier
-
-        ocr = OcrEngine()
-        clf = DocumentClassifier()
-        ext = EntityExtractor()
-
-        ocr_out     = ocr.extract("path/to/doc.pdf")
-        cls_result  = clf.classify(ocr_out, pdf_path="path/to/doc.pdf")
-        result      = ext.extract(ocr_out, cls_result, "path/to/doc.pdf")
-
+        extractor = EntityExtractor()
+        result, telemetry = extractor.extract(ocr_output, classification, "doc.pdf")
         for entity in result.entities:
             print(entity.entity_type, entity.value, entity.bbox)
+        print(telemetry.report())
     """
 
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY", "")
-        if not api_key or api_key == "your_key_here":
+        if not api_key or api_key.strip() in ("", "your_key_here"):
             logger.warning(
-                "GEMINI_API_KEY not set or is placeholder. "
-                "EntityExtractor will return empty results until a real key is provided."
+                "GEMINI_API_KEY not set. EntityExtractor will run local-only mode "
+                "(no Gemini fallback). Set GEMINI_API_KEY in backend/.env to enable Gemini."
             )
             self._model = None
         else:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            self._model = genai.GenerativeModel("gemini-2.0-flash")
-            logger.info("EntityExtractor initialised with gemini-2.0-flash")
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=api_key)
+                self._model = genai.GenerativeModel("gemini-2.0-flash")
+                logger.info("EntityExtractor: Gemini fallback initialised (gemini-2.0-flash)")
+            except Exception as e:
+                logger.error(f"Gemini init failed: {e}")
+                self._model = None
+
+        self._local = LocalExtractor()
+        self._gemini = GeminiFallback(self._model)
 
     # ------------------------------------------------------------------
     # Public API
@@ -287,26 +732,21 @@ class EntityExtractor:
         classification: ClassificationResult,
         pdf_path: str,
         document_id: str = "doc_001",
-    ) -> ExtractionResult:
+    ) -> tuple[ExtractionResult, ExtractionTelemetry]:
         """
-        Extract header entities from a document.
-
-        Parameters
-        ----------
-        ocr_output     : OcrOutput from Phase 03 OcrEngine
-        classification : ClassificationResult from Phase 04 DocumentClassifier
-        pdf_path       : path to the original PDF (for Gemini Vision page images)
-        document_id    : identifier for this document in the pipeline
+        Extract header entities from a document using the hybrid strategy.
 
         Returns
         -------
-        ExtractionResult with populated entities list and raw_ocr snapshot
+        (ExtractionResult, ExtractionTelemetry)
         """
+        t0 = time.time()
         doc_type = classification.document_type
+        entity_schema = ENTITY_SCHEMAS.get(doc_type, [])
 
-        # Build the raw_ocr snapshot (used by Kaveen for PDF overlay)
+        telemetry = ExtractionTelemetry(fields_requested=len(entity_schema))
+
         raw_ocr = self._build_raw_ocr(ocr_output)
-
         result = ExtractionResult(
             document_id=document_id,
             document_type=doc_type,
@@ -315,128 +755,90 @@ class EntityExtractor:
             raw_ocr=raw_ocr,
         )
 
-        if self._model is None:
-            logger.warning("No Gemini API key -- returning empty entity list.")
-            return result
+        if not entity_schema:
+            logger.info(f"No schema for doc_type='{doc_type}' -- returning empty.")
+            telemetry.elapsed_sec = time.time() - t0
+            return result, telemetry
 
-        if doc_type == "unknown":
-            logger.info("Document type is unknown -- using generic prompt.")
-
-        # Flatten all OCR tokens for bbox mapping
+        # Flatten all tokens (all pages)
         all_tokens = [tok for page in ocr_output.pages for tok in page.tokens]
 
-        # Process each page (header entities are usually on page 1)
-        try:
-            from pdf2image import convert_from_path
-            images = convert_from_path(pdf_path, first_page=1, last_page=2)
-        except Exception as e:
-            logger.error(f"Could not convert PDF to images: {e}")
-            return result
+        if not all_tokens:
+            logger.warning(f"No OCR tokens found in '{pdf_path}'")
+            telemetry.elapsed_sec = time.time() - t0
+            return result, telemetry
 
-        for page_idx, page_image in enumerate(images):
-            page_num = page_idx + 1
-            page_tokens = [t for t in all_tokens if t.page == page_num]
+        # ── Layer 1: Local extraction ──────────────────────────────────
+        local_results = self._local.extract(entity_schema, all_tokens, doc_type)
+        telemetry.local_extracted = len(local_results)
 
-            # Only process page 1 for header entities (phase 07 handles tables)
-            if page_num > 1:
-                break
-
-            entities = self._extract_page(
-                page_image=page_image,
-                doc_type=doc_type,
-                page_tokens=all_tokens,   # search all tokens for bbox
-                page_num=page_num,
-            )
-            result.entities.extend(entities)
-
-        logger.info(
-            f"Extracted {len(result.entities)} entities from '{pdf_path}' "
-            f"(type={doc_type})"
-        )
-        return result
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _extract_page(
-        self,
-        page_image,
-        doc_type: str,
-        page_tokens: list,
-        page_num: int,
-    ) -> list[ExtractedEntity]:
-        """Call Gemini Vision on one page image and map results to OCR bboxes."""
-        prompt = EXTRACTION_PROMPTS.get(doc_type, GENERIC_PROMPT)
-
-        try:
-            response = self._model.generate_content([prompt, page_image])
-            raw_text = _strip_fences(response.text)
-            gemini_data: dict = json.loads(raw_text)
-        except json.JSONDecodeError as e:
-            logger.error(f"Gemini returned non-JSON for page {page_num}: {e}")
-            return []
-        except Exception as e:
-            logger.error(f"Gemini API call failed for page {page_num}: {e}")
-            return []
-
-        entities: list[ExtractedEntity] = []
-
-        for entity_type, raw_value in gemini_data.items():
-            # Skip nulls
-            if raw_value is None or str(raw_value).lower() in ("null", "", "none"):
-                continue
-
-            value_str = str(raw_value).strip()
-
-            # Find the best matching OCR token for the bounding box
-            matched_token = map_to_bbox(value_str, page_tokens)
-
-            if matched_token:
-                bbox = matched_token.bbox
-                ocr_conf = matched_token.confidence
-                # Blend: Gemini confident + OCR read successfully
-                extraction_confidence = round(min(0.97, (ocr_conf + 0.92) / 2), 4)
-            else:
-                # Gemini found it but no OCR token matched -- still include the entity
-                # with a lower confidence and a default bbox
-                bbox = _DEFAULT_BBOX
-                extraction_confidence = 0.50
-                logger.debug(
-                    f"No OCR token matched for {entity_type}={value_str!r} -- "
-                    f"using default bbox"
-                )
-
-            entities.append(ExtractedEntity(
+        # ── Build entities from local results ─────────────────────────
+        for entity_type, (value, conf, tokens) in local_results.items():
+            bbox, ocr_conf = _multi_token_bbox(value, tokens if tokens else all_tokens)
+            page = tokens[0].page if tokens else (all_tokens[0].page if all_tokens else 1)
+            result.entities.append(ExtractedEntity(
                 entity_type=entity_type,
-                value=value_str,           # raw string, NOT normalised (Phase 09 does that)
-                page=page_num,
+                value=value,            # raw, not normalised
+                page=page,
                 bbox=bbox,
-                extraction_confidence=extraction_confidence,
-                normalized_value=None,     # Phase 09 normalizer fills this
-                unit=None,                 # Phase 09 normalizer fills this
+                extraction_confidence=round(min(conf, 0.97), 4),
+                normalized_value=None,  # Phase 09
+                unit=None,              # Phase 09
             ))
 
-        return entities
+        # ── Layer 2: Gemini fallback for remaining fields ──────────────
+        locally_found = {e.entity_type for e in result.entities}
+        missing = [f for f in entity_schema if f not in locally_found]
+        telemetry.gemini_fallback_fields = len(missing)
 
-    def _build_raw_ocr(self, ocr_output: OcrOutput) -> list[dict]:
-        """Convert OcrOutput to the list[dict] format expected by the output contract."""
-        raw = []
-        for page in ocr_output.pages:
-            for token in page.tokens:
-                raw.append({
-                    "text": token.text,
-                    "page": token.page,
-                    "bbox": token.bbox,
-                    "ocr_confidence": round(token.confidence, 4),
-                })
-        return raw
+        if missing and self._model is not None:
+            # Convert PDF page 1 to image for Gemini
+            page_image = self._get_page_image(pdf_path, page_num=1)
+
+            if page_image is not None:
+                telemetry.gemini_calls += 1
+                gemini_data = self._gemini.extract_missing(missing, doc_type, page_image)
+                telemetry.gemini_recovered = len(gemini_data)
+
+                for entity_type, value in gemini_data.items():
+                    # Map Gemini value back to OCR bbox
+                    bbox, ocr_conf = _multi_token_bbox(value, all_tokens)
+                    page = self._value_page(value, all_tokens)
+                    conf = self._gemini_confidence(bbox, ocr_conf)
+
+                    result.entities.append(ExtractedEntity(
+                        entity_type=entity_type,
+                        value=value,
+                        page=page,
+                        bbox=bbox,
+                        extraction_confidence=round(conf, 4),
+                        normalized_value=None,
+                        unit=None,
+                    ))
+            else:
+                logger.warning("Could not load page image for Gemini -- skipping fallback.")
+        elif missing:
+            logger.info(
+                f"Gemini not available. {len(missing)} fields not extracted: {missing}"
+            )
+
+        # ── Count failures (fields still missing after both layers) ───
+        found_types = {e.entity_type for e in result.entities}
+        telemetry.failed = len([f for f in entity_schema if f not in found_types])
+
+        telemetry.elapsed_sec = round(time.time() - t0, 3)
+        logger.info(
+            f"Phase 06 done | doc={document_id} type={doc_type} "
+            f"entities={len(result.entities)} | {telemetry.report()}"
+        )
+        return result, telemetry
+
+    # ------------------------------------------------------------------
+    # Serialisation helper (Aloka's knowledge graph contract)
+    # ------------------------------------------------------------------
 
     def to_dict(self, result: ExtractionResult) -> dict:
-        """
-        Serialise an ExtractionResult to the canonical JSON contract.
-        This is the format Aloka's knowledge graph and Kaveen's API consume.
-        """
+        """Serialise ExtractionResult to JSON-safe dict for API/KG consumption."""
         return {
             "document_id": result.document_id,
             "document_type": result.document_type,
@@ -455,3 +857,45 @@ class EntityExtractor:
             ],
             "raw_ocr": result.raw_ocr,
         }
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _get_page_image(self, pdf_path: str, page_num: int = 1):
+        """Convert a PDF page to a PIL Image for Gemini Vision."""
+        try:
+            from pdf2image import convert_from_path
+            images = convert_from_path(pdf_path, first_page=page_num, last_page=page_num)
+            return images[0] if images else None
+        except Exception as e:
+            logger.error(f"PDF->image conversion failed: {e}")
+            return None
+
+    def _value_page(self, value: str, ocr_tokens: list) -> int:
+        """Return the page number of the best-matching OCR token for this value."""
+        tok = map_to_bbox(value, ocr_tokens)
+        return tok.page if tok else 1
+
+    def _gemini_confidence(self, bbox: list, ocr_conf: float) -> float:
+        """
+        Confidence for a Gemini-extracted entity.
+        - If bbox matched an OCR token: blend Gemini base (0.82) with OCR conf
+        - If no bbox match: lower confidence (0.55) -- Gemini found it but we couldn't verify
+        """
+        if bbox == _DEFAULT_BBOX or bbox == [0, 0, 0, 0]:
+            return 0.55
+        return min(0.93, (0.82 + ocr_conf) / 2)
+
+    def _build_raw_ocr(self, ocr_output: OcrOutput) -> list[dict]:
+        """Mirror OcrOutput as list[dict] for the output contract."""
+        raw = []
+        for page in ocr_output.pages:
+            for token in page.tokens:
+                raw.append({
+                    "text": token.text,
+                    "page": token.page,
+                    "bbox": token.bbox,
+                    "ocr_confidence": round(token.confidence, 4),
+                })
+        return raw
