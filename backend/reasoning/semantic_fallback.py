@@ -22,22 +22,19 @@ class SemanticFallback:
         if str_a == str_b:
             return True
             
-        # Normalize common business abbreviations
-        abbreviations = [
-            ("corp", "corporation"),
-            ("inc", "incorporated"),
-            ("ltd", "limited"),
-            ("co", "company"),
-            (".", "")
-        ]
+        str_a = str_a.replace(".", "")
+        str_b = str_b.replace(".", "")
         
-        for abbr, full in abbreviations:
-            str_a = str_a.replace(abbr, full).replace(full, abbr)
-            str_b = str_b.replace(abbr, full).replace(full, abbr)
-            
+        abbreviations = {
+            "corp": "corporation",
+            "inc": "incorporated",
+            "ltd": "limited",
+            "co": "company"
+        }
+        
         # Calculate similarity
-        set_a = set(str_a.split())
-        set_b = set(str_b.split())
+        set_a = set(abbreviations.get(w, w) for w in str_a.split())
+        set_b = set(abbreviations.get(w, w) for w in str_b.split())
         
         if not set_a or not set_b:
             return False
