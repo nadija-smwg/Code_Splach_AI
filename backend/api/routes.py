@@ -81,55 +81,75 @@ async def get_extraction(shipment_id: str):
 
 @router.get("/shipments/{shipment_id}/graph")
 async def get_knowledge_graph(shipment_id: str):
-    return {
-        "nodes": [
-            {"id": "doc_001", "label": "Commercial Invoice", "type": "document", "color": "#4A90D9"},
-            {"id": "doc_002", "label": "Packing List", "type": "document", "color": "#50C878"},
-            {"id": "doc_003", "label": "AWB", "type": "document", "color": "#FFB347"},
-            {"id": "GROSS_WEIGHT", "label": "Gross Weight", "type": "entity", "status": "conflict", "color": "#FF6B6B"},
-            {"id": "NET_WEIGHT", "label": "Net Weight", "type": "entity", "status": "match", "color": "#50C878"},
-            {"id": "PACKAGE_COUNT", "label": "Package Count", "type": "entity", "status": "match", "color": "#50C878"},
-            {"id": "CONSIGNEE_NAME", "label": "Consignee", "type": "entity", "status": "warning", "color": "#FFD700"},
-            {"id": "INCOTERM", "label": "Incoterm", "type": "entity", "status": "match", "color": "#50C878"}
-        ],
-        "edges": [
-            {"from": "doc_001", "to": "GROSS_WEIGHT", "label": "450.00 kg", "confidence": 0.94},
-            {"from": "doc_002", "to": "GROSS_WEIGHT", "label": "450.00 kg", "confidence": 0.95},
-            {"from": "doc_003", "to": "GROSS_WEIGHT", "label": "448.50 kg", "confidence": 0.93},
-            {"from": "doc_001", "to": "NET_WEIGHT", "label": "420.00 kg", "confidence": 0.93},
-            {"from": "doc_002", "to": "NET_WEIGHT", "label": "420.00 kg", "confidence": 0.93},
-            {"from": "doc_001", "to": "PACKAGE_COUNT", "label": "25 cartons", "confidence": 0.95},
-            {"from": "doc_002", "to": "PACKAGE_COUNT", "label": "25 cartons", "confidence": 0.96},
-            {"from": "doc_003", "to": "PACKAGE_COUNT", "label": "25 pieces", "confidence": 0.94},
-            {"from": "doc_001", "to": "CONSIGNEE_NAME", "label": "ABC Textiles Ltd", "confidence": 0.91},
-            {"from": "doc_003", "to": "CONSIGNEE_NAME", "label": "ABC Textiles Ltd.", "confidence": 0.89},
-            {"from": "doc_001", "to": "INCOTERM", "label": "FOB", "confidence": 0.92}
-        ]
-    }
+    from backend.reasoning.knowledge_builder import KnowledgeBuilder
+    from backend.xai_types import ExtractedEntity
+    
+    kb = KnowledgeBuilder()
+    kb.add_document_node("doc_001", "commercial_invoice")
+    kb.add_document_node("doc_003", "awb")
+    
+    ent1 = ExtractedEntity(entity_type="GROSS_WEIGHT", value="450.0", normalized_value=450.0, unit="KG", page=1, bbox=[400,350,550,375], extraction_confidence=0.94)
+    ent2 = ExtractedEntity(entity_type="GROSS_WEIGHT", value="448.5", normalized_value=448.5, unit="KG", page=1, bbox=[350,300,500,325], extraction_confidence=0.93)
+    ent3 = ExtractedEntity(entity_type="CONSIGNEE_NAME", value="ABC Textiles Ltd", normalized_value="ABC Textiles Ltd", unit=None, page=1, bbox=[50,200,320,225], extraction_confidence=0.91)
+    ent4 = ExtractedEntity(entity_type="CONSIGNEE_NAME", value="ABC Textiles Ltd.", normalized_value="ABC Textiles Ltd.", unit=None, page=1, bbox=[50,200,350,225], extraction_confidence=0.89)
+    
+    kb.add_entity_node("node_w_inv", ent1, "doc_001")
+    kb.add_entity_node("node_w_awb", ent2, "doc_003")
+    kb.add_relationship("node_w_inv", "node_w_awb", "MUST_MATCH")
+    kb.add_entity_node("node_c_inv", ent3, "doc_001")
+    kb.add_entity_node("node_c_awb", ent4, "doc_003")
+    kb.add_relationship("node_c_inv", "node_c_awb", "MUST_MATCH")
+    
+    return kb.to_vis_json()
 
 @router.get("/shipments/{shipment_id}/discrepancies")
 async def get_discrepancies(shipment_id: str):
+    from backend.reasoning.knowledge_builder import KnowledgeBuilder
+    from backend.reasoning.rule_evaluator import RuleEvaluator
+    from backend.reasoning.xai_compiler import XAICompiler
+    from backend.xai_types import ExtractedEntity
+    import dataclasses
+    
+    # 1. Mock Extraction Pipeline
+    kb = KnowledgeBuilder()
+    kb.add_document_node("doc_001", "commercial_invoice")
+    kb.add_document_node("doc_003", "awb")
+    
+    ent1 = ExtractedEntity(entity_type="GROSS_WEIGHT", value="450.0", normalized_value=450.0, unit="KG", page=1, bbox=[400,350,550,375], extraction_confidence=0.94)
+    ent2 = ExtractedEntity(entity_type="GROSS_WEIGHT", value="448.5", normalized_value=448.5, unit="KG", page=1, bbox=[350,300,500,325], extraction_confidence=0.93)
+    ent3 = ExtractedEntity(entity_type="CONSIGNEE_NAME", value="ABC Textiles Ltd", normalized_value="ABC Textiles Ltd", unit=None, page=1, bbox=[50,200,320,225], extraction_confidence=0.91)
+    ent4 = ExtractedEntity(entity_type="CONSIGNEE_NAME", value="ABC Textiles Ltd.", normalized_value="ABC Textiles Ltd.", unit=None, page=1, bbox=[50,200,350,225], extraction_confidence=0.89)
+    
+    kb.add_entity_node("node_w_inv", ent1, "doc_001")
+    kb.add_entity_node("node_w_awb", ent2, "doc_003")
+    kb.add_relationship("node_w_inv", "node_w_awb", "MUST_MATCH")
+    
+    kb.add_entity_node("node_c_inv", ent3, "doc_001")
+    kb.add_entity_node("node_c_awb", ent4, "doc_003")
+    kb.add_relationship("node_c_inv", "node_c_awb", "MUST_MATCH")
+    
+    # 2. Neuro-Symbolic Evaluation
+    evaluator = RuleEvaluator(kb.get_graph())
+    failures = evaluator.evaluate()
+    
+    # 3. Compile 4-Layer XAI Payload
+    compiler = XAICompiler(kb.get_graph())
+    
+    discrepancies = []
+    for f in failures:
+        xai_block = compiler.compile(f)
+        discrepancies.append({
+            "discrepancy_id": f.rule_id,
+            "field": f.rule_id,
+            "severity": "high",
+            "status": "open",
+            "xai_block": dataclasses.asdict(xai_block)
+        })
+        
     return {
-        "shipment_id": shipment_id, "total_discrepancies": 2,
-        "discrepancies": [
-            {"discrepancy_id": "disc_001", "field": "GROSS_WEIGHT", "severity": "high", "severity_score": 0.87, "status": "open",
-             "sources": [
-                {"document_id": "doc_001", "document_type": "commercial_invoice", "value": "450.00 kg", "page": 1, "bbox": [400,350,550,375]},
-                {"document_id": "doc_002", "document_type": "packing_list", "value": "450.00 kg", "page": 1, "bbox": [350,400,500,425]},
-                {"document_id": "doc_003", "document_type": "awb", "value": "448.50 kg", "page": 1, "bbox": [350,300,500,325]}
-             ],
-             "reasoning_chain": {"steps": ["Invoice: 450.00 kg","Packing List: 450.00 kg","AWB: 448.50 kg","Invoice vs PL: MATCH","Invoice vs AWB: 0.33% variance","PL internal: net+tare=445 != gross=450 INCONSISTENCY"],"conclusion": "AWB deviates. PL has internal inconsistency."},
-             "confidence": {"extraction": 0.94, "classification": 0.96, "matching": 0.72, "overall": 0.72},
-             "counterfactual": {"options": ["If AWB were 450.00 kg, discrepancy resolves.","If PL tare were 30 kg, PL internal resolves."],"recommendation": "Verify at factory scale. Fix PL inconsistency first."}},
-            {"discrepancy_id": "disc_002", "field": "CONSIGNEE_NAME", "severity": "low", "severity_score": 0.35, "status": "open",
-             "sources": [
-                {"document_id": "doc_001", "document_type": "commercial_invoice", "value": "ABC Textiles Ltd", "page": 1, "bbox": [50,200,320,225]},
-                {"document_id": "doc_003", "document_type": "awb", "value": "ABC Textiles Ltd.", "page": 1, "bbox": [50,200,350,225]}
-             ],
-             "reasoning_chain": {"steps": ["Invoice: 'ABC Textiles Ltd'","AWB: 'ABC Textiles Ltd.'","Fuzzy match: 97%","Difference: trailing period"],"conclusion": "Minor typo. Same entity."},
-             "confidence": {"extraction": 0.90, "classification": 0.96, "matching": 0.97, "overall": 0.90},
-             "counterfactual": {"options": ["Remove trailing period from AWB consignee."],"recommendation": "Non-issue. Use Invoice version for CUSDEC."}}
-        ]
+        "shipment_id": shipment_id,
+        "total_discrepancies": len(discrepancies),
+        "discrepancies": discrepancies
     }
 
 @router.get("/shipments/{shipment_id}/audit-trail")
