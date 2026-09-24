@@ -88,3 +88,81 @@ CREATE INDEX idx_extractions_entity_type ON extractions(entity_type);
 CREATE INDEX idx_discrepancies_shipment ON discrepancies(shipment_id);
 CREATE INDEX idx_audit_logs_shipment ON audit_logs(shipment_id);
 CREATE INDEX idx_audit_logs_timestamp ON audit_logs(timestamp);
+
+-- =====================================================================
+-- Phase 09 — Canonical Normalization Cache (Tier 2)
+-- Shared persistent cache for semantic entity canonicalization.
+-- Replaces backend/data/norm_cache.json
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS norm_cache (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- Tier 1 deterministic key: "ENTITY_TYPE:sorted tokens"
+    cache_key   VARCHAR(255) NOT NULL UNIQUE,
+
+    entity_type VARCHAR(50)  NOT NULL,
+    raw_value   TEXT         NOT NULL,
+    canonical   TEXT         NOT NULL,
+
+    -- 'rule' = deterministic pre-seed, 'llm' = Gemini output, 'manual' = human correction
+    source      VARCHAR(20)  NOT NULL DEFAULT 'llm'
+                    CHECK (source IN ('rule', 'llm', 'manual')),
+
+    hit_count   INTEGER      NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    last_used   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_norm_cache_key
+    ON norm_cache(cache_key);
+CREATE INDEX IF NOT EXISTS idx_norm_cache_entity
+    ON norm_cache(entity_type);
+CREATE INDEX IF NOT EXISTS idx_norm_cache_last_used
+    ON norm_cache(last_used);
+
+-- Pre-seed common values to avoid unnecessary Gemini calls during demo
+INSERT INTO norm_cache (cache_key, entity_type, raw_value, canonical, source) VALUES
+    ('CONSIGNEE_NAME:burlington inc industries', 'CONSIGNEE_NAME', 'Burlington Industries Inc.', 'Burlington Industries Inc.', 'rule'),
+    ('PORT_LOADING:cmb colombo',                 'PORT_LOADING',   'Colombo (CMB)',              'Colombo Port (LKCMB)',       'rule'),
+    ('PORT_DISCHARGE:angeles lax los',           'PORT_DISCHARGE', 'Los Angeles (LAX)',          'Los Angeles (USLAX)',        'rule'),
+    ('INCOTERM:fob',                             'INCOTERM',       'FOB',                        'FOB',                       'rule'),
+    ('INCOTERM:cif',                             'INCOTERM',       'CIF',                        'CIF',                       'rule')
+ON CONFLICT (cache_key) DO NOTHING;
+
+-- =====================================================================
+-- Phase 09 — Dossier Upload Tables
+-- One dossier = one shipment upload (groups 1-N documents)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS dossiers (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at  TIMESTAMPTZ NOT NULL    DEFAULT NOW(),
+    status      VARCHAR(20) NOT NULL    DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'processing', 'done', 'error'))
+);
+
+-- One row per PDF file within a dossier
+CREATE TABLE IF NOT EXISTS dossier_documents (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    dossier_id      UUID        NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
+    original_name   TEXT        NOT NULL,
+    file_path       TEXT        NOT NULL,
+
+    -- Set by AI pipeline after classification
+    document_type   VARCHAR(50),
+
+    -- Lifecycle status
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'processing', 'done', 'error')),
+    error_message   TEXT,
+
+    -- Full ExtractionResult JSON stored here when status = 'done'
+    extraction_json JSONB,
+
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dossier_documents_dossier
+    ON dossier_documents(dossier_id);
+CREATE INDEX IF NOT EXISTS idx_dossier_documents_status
+    ON dossier_documents(status);

@@ -5,3 +5,8 @@ python-dotenv==1.0.0
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
 pydantic==2.5.2
+
+# Phase 09 — Normalization + Dossier Upload
+python-dateutil==2.9.0      # date normalization (ISO 8601 parsing)
+google-genai>=0.8.0          # Gemini Tier 3 semantic canonicalization
+pdf2image==1.17.0            # PDF page → PIL image for Gemini Vision
