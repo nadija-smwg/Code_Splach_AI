@@ -73,15 +73,16 @@ class EntityNormalizer:
 
         # ── Tier 3 — Gemini ────────────────────────────────────────────
         self._gemini = None
-        self._gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self._gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
         api_key = os.getenv("GEMINI_API_KEY", "")
 
         if api_key and api_key not in ("", "your_key_here"):
             try:
-                from google import genai
+                import google.generativeai as genai
 
-                self._gemini = genai.Client(api_key=api_key)
+                genai.configure(api_key=api_key)
+                self._gemini = genai.GenerativeModel(self._gemini_model)
                 logger.info(
                     "EntityNormalizer: Gemini enabled model=%s",
                     self._gemini_model,
@@ -379,25 +380,37 @@ Return ONLY the canonical value. No explanation."""
 
         try:
             from pydantic import BaseModel
-            from google.genai import types
+            import google.generativeai as genai
 
             class CanonicalizationResult(BaseModel):
                 canonical: str
 
-            response = self._gemini.models.generate_content(
-                model=self._gemini_model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=CanonicalizationResult,
-                ),
-            )
-
-            parsed = CanonicalizationResult.model_validate_json(response.text)
-            return parsed.canonical.strip()
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = self._gemini.generate_content(
+                        prompt,
+                        generation_config=genai.GenerationConfig(
+                            response_mime_type="application/json",
+                            response_schema=CanonicalizationResult,
+                        ),
+                    )
+                    parsed = CanonicalizationResult.model_validate_json(response.text)
+                    return parsed.canonical.strip()
+                except Exception as e:
+                    error_msg = str(e)
+                    if "429" in error_msg and attempt < max_retries - 1:
+                        import time, re
+                        match = re.search(r"Please retry in ([\d\.]+)s", error_msg)
+                        wait_sec = float(match.group(1)) + 1 if match else 20.0
+                        logger.warning(f"Gemini 429 Quota Exceeded in Normalizer. Waiting {wait_sec:.1f}s before retry (Attempt {attempt+1}/{max_retries})...")
+                        time.sleep(wait_sec)
+                    else:
+                        logger.warning("Gemini canonicalization failed after %d attempts: %s", attempt+1, e)
+                        return raw_value.strip()
 
         except Exception as exc:
-            logger.warning("Gemini canonicalization failed: %s", exc)
+            logger.warning("Gemini canonicalization setup failed: %s", exc)
             return raw_value.strip()
 
     # ==================================================================

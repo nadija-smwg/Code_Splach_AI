@@ -195,7 +195,7 @@ _DEFAULT_BBOX = [0, 0, 0, 0]
 _MIN_OCR_CONFIDENCE = 0.60
 
 # Minimum local extraction confidence to skip Gemini
-_LOCAL_CONFIDENCE_GATE = 0.70
+_LOCAL_CONFIDENCE_GATE = 1.10
 
 
 # ---------------------------------------------------------------------------
@@ -586,40 +586,60 @@ class GeminiFallback:
             return {}
 
 
-        # Dynamically build Pydantic schema for ONLY the missing fields
-        schema_fields = {}
-        for f in missing_fields:
-            field_meta = FIELD_DEFINITIONS.get(f, {"type": str, "desc": ""})
-            schema_fields[f] = (field_meta["type"], Field(description=field_meta["desc"]))
-
-        DynamicSchema = create_model(f"{doc_type.capitalize()}Schema", **schema_fields)
-
-        prompt = (
-            f"Extract the requested missing fields from this {doc_type}. "
-            f"Return ONLY valid JSON according to the schema. "
-            f"If a field is not visibly present in the document, return an empty string for text, or 0.0 for numbers."
-        )
-
         try:
-            response = self._model.generate_content(
-                [prompt, page_image],
-                generation_config=genai.GenerationConfig(
-                    response_mime_type="application/json",
-                    response_schema=DynamicSchema,
-                    temperature=0.0
-                )
+            from pydantic import BaseModel
+            import google.generativeai as genai
+            
+            # Dynamically build Pydantic schema for ONLY the missing fields
+            schema_fields = {}
+            for f in missing_fields:
+                field_meta = FIELD_DEFINITIONS.get(f, {"type": str, "desc": ""})
+                schema_fields[f] = (field_meta["type"], Field(description=field_meta["desc"]))
+    
+            DynamicSchema = create_model(f"{doc_type.capitalize()}Schema", **schema_fields)
+    
+            prompt = (
+                f"Extract the requested missing fields from this {doc_type}. "
+                f"Return ONLY valid JSON according to the schema. "
+                f"If a field is not visibly present in the document, return an empty string for text, or 0.0 for numbers."
             )
-            data: dict = json.loads(response.text)
+            
+            data = {}
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = self._model.generate_content(
+                        [prompt, page_image],
+                        generation_config=genai.GenerationConfig(
+                            response_mime_type="application/json",
+                            response_schema=DynamicSchema,
+                            temperature=0.0
+                        )
+                    )
+                    data = json.loads(response.text)
+                    break  # Success!
+                except Exception as e:
+                    error_msg = str(e)
+                    if "429" in error_msg and attempt < max_retries - 1:
+                        # Extract the required wait time or default to 20 seconds
+                        import time, re
+                        match = re.search(r"Please retry in ([\d\.]+)s", error_msg)
+                        wait_sec = float(match.group(1)) + 1 if match else 20.0
+                        logger.warning(f"Gemini 429 Quota Exceeded in Extractor. Waiting {wait_sec:.1f}s before retry (Attempt {attempt+1}/{max_retries})...")
+                        time.sleep(wait_sec)
+                    else:
+                        logger.error(f"Gemini API structured extraction failed after {attempt+1} attempts: {e}")
+                        return {}
+    
+            results = {}
+            for k, v in data.items():
+                if k in missing_fields and not _is_null(v):
+                    results[k] = str(v).strip()
+    
+            return results
         except Exception as e:
-            logger.error(f"Gemini API structured extraction failed: {e}")
+            logger.error(f"Failed to prepare Gemini schema: {e}")
             return {}
-
-        results = {}
-        for k, v in data.items():
-            if k in missing_fields and not _is_null(v):
-                results[k] = str(v).strip()
-
-        return results
 
 
 # ---------------------------------------------------------------------------
