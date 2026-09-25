@@ -110,11 +110,11 @@ class CounterfactualGenerator:
             "Vessel name must match the shipping line's official name. "
             "Abbreviations may differ — use the name on the Arrival Notice."
         ),
-        "PORT_LOADING": (
+        "PORT_OF_LOADING": (
             "Port of loading must match the physical export port used. "
             "For Sri Lanka, this is typically Colombo (CMB) or Hambantota."
         ),
-        "PORT_DISCHARGE": (
+        "PORT_OF_DISCHARGE": (
             "Port of discharge must match the destination as stated in the LC. "
             "Verify with the freight forwarder for transshipment details."
         ),

@@ -247,8 +247,8 @@ class TestSemanticNormalization:
         n._db_pool = None
         n._gemini = None
         n._gemini_model = "test-model"
-        key_a = n._tier1_key("PORT_LOADING", "Colombo Custom Port")
-        key_b = n._tier1_key("PORT_LOADING", "Port Custom Colombo")
+        key_a = n._tier1_key("PORT_OF_LOADING", "Colombo Custom Port")
+        key_b = n._tier1_key("PORT_OF_LOADING", "Port Custom Colombo")
         assert key_a == key_b  # token-sort produces same key
 
     def test_cache_hit_returns_canonical(self, mocker):
@@ -262,7 +262,7 @@ class TestSemanticNormalization:
         mocker.patch.object(n, "_db_get", return_value="Colombo Port (LKCMB)")
         mocker.patch.object(n, "_db_increment_hit")
 
-        r = n._normalize_semantic("PORT_LOADING", "Colombo Custom Port")
+        r = n._normalize_semantic("PORT_OF_LOADING", "Colombo Custom Port")
         assert r["normalized_value"] == "Colombo Port (LKCMB)"
         n._db_increment_hit.assert_called_once()
 
@@ -277,9 +277,9 @@ class TestSemanticNormalization:
         mocker.patch.object(n, "_llm_canonicalize", return_value="Colombo Port (LKCMB)")
         mocker.patch.object(n, "_db_set")
 
-        r = n._normalize_semantic("PORT_LOADING", "Port Custom Colombo")
+        r = n._normalize_semantic("PORT_OF_LOADING", "Port Custom Colombo")
 
-        n._llm_canonicalize.assert_called_once_with("PORT_LOADING", "Port Custom Colombo")
+        n._llm_canonicalize.assert_called_once_with("PORT_OF_LOADING", "Port Custom Colombo")
         n._db_set.assert_called_once()
         assert r["normalized_value"] == "Colombo Port (LKCMB)"
 
@@ -295,7 +295,7 @@ class TestSemanticNormalization:
         mocker.patch.object(n, "_db_set")
 
         raw = "Port Custom Colombo"
-        r = n._normalize_semantic("PORT_LOADING", raw)
+        r = n._normalize_semantic("PORT_OF_LOADING", raw)
         assert r["original_value"] == raw
 
     def test_gemini_unavailable_returns_raw(self):
@@ -305,7 +305,7 @@ class TestSemanticNormalization:
         n._gemini = None  # Gemini disabled
         n._gemini_model = "test-model"
 
-        result = n._llm_canonicalize("PORT_LOADING", "Unknown Port XYZ")
+        result = n._llm_canonicalize("PORT_OF_LOADING", "Unknown Port XYZ")
         assert result == "Unknown Port XYZ"
 
 
@@ -323,7 +323,7 @@ class TestErrorHandling:
 
     def test_db_unavailable_does_not_crash(self, normalizer):
         # normalizer fixture already has _db_pool=None
-        r = normalizer.normalize("PORT_LOADING", "Colombo Port")
+        r = normalizer.normalize("PORT_OF_LOADING", "Colombo Port")
         assert isinstance(r, dict)
 
     def test_zero_is_valid_normalized_value(self, normalizer):

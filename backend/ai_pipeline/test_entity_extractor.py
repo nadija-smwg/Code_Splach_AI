@@ -520,7 +520,7 @@ section("BILL OF LADING — SCHEMA COVERAGE TEST")
 # =============================================================================
 
 bl_schema = ENTITY_SCHEMAS["bl"]
-if set(bl_schema) == {"BL_NUMBER","VESSEL_NAME","PORT_LOADING","PORT_DISCHARGE","GROSS_WEIGHT","PACKAGE_COUNT","CONTAINER_NUMBER"}:
+if set(bl_schema) == {"BL_NUMBER","VESSEL_NAME","PORT_OF_LOADING","PORT_OF_DISCHARGE","GROSS_WEIGHT","PACKAGE_COUNT","CONTAINER_NUMBER"}:
     ok("B/L schema has all 7 required fields")
 else:
     fail("B/L schema wrong: " + str(bl_schema))

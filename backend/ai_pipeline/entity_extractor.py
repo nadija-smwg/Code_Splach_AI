@@ -35,6 +35,7 @@ Author: Nadija (Phase 06)
 from __future__ import annotations
 
 import json
+import google.generativeai as genai
 import logging
 import os
 import re
@@ -118,7 +119,7 @@ ENTITY_SCHEMAS: dict[str, list[str]] = {
         "INVOICE_NUMBER", "INVOICE_DATE", "CONSIGNEE_NAME", "CONSIGNEE_ADDRESS",
         "SHIPPER_NAME", "INCOTERM", "PAYMENT_TERMS", "TOTAL_AMOUNT",
         "CURRENCY_CODE", "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT",
-        "HS_CODE", "COUNTRY_OF_ORIGIN", "PORT_LOADING", "PORT_DISCHARGE",
+        "HS_CODE", "COUNTRY_OF_ORIGIN", "PORT_OF_LOADING", "PORT_OF_DISCHARGE",
         "VESSEL_NAME", "FREIGHT_AMOUNT", "INSURANCE_AMOUNT"
     ],
     "packing_list": [
@@ -131,7 +132,7 @@ ENTITY_SCHEMAS: dict[str, list[str]] = {
         "TOTAL_AMOUNT", "CURRENCY_CODE", "FREIGHT_AMOUNT", "INSURANCE_AMOUNT"
     ],
     "bl": [
-        "BL_NUMBER", "VESSEL_NAME", "PORT_LOADING", "PORT_DISCHARGE",
+        "BL_NUMBER", "VESSEL_NAME", "PORT_OF_LOADING", "PORT_OF_DISCHARGE",
         "GROSS_WEIGHT", "PACKAGE_COUNT", "CONTAINER_NUMBER", "CONSIGNEE_NAME", 
         "SHIPPER_NAME"
     ],
@@ -141,7 +142,7 @@ ENTITY_SCHEMAS: dict[str, list[str]] = {
     ],
     "delivery_order": [
         "DO_NUMBER", "CONSIGNEE_NAME", "CONTAINER_NUMBER",
-        "GROSS_WEIGHT", "PACKAGE_COUNT", "PORT_DISCHARGE"
+        "GROSS_WEIGHT", "PACKAGE_COUNT", "PORT_OF_DISCHARGE"
     ],
     "letter_of_credit": [
         "LC_NUMBER", "ISSUING_BANK", "BENEFICIARY", "CONSIGNEE_NAME",
@@ -165,8 +166,8 @@ FIELD_DEFINITIONS = {
     "PACKAGE_COUNT": {"type": float, "desc": "Total number of packages/cartons/rolls (numeric only)."},
     "HS_CODE": {"type": str, "desc": "Harmonized System (HS) code. Usually 6 to 10 digits."},
     "COUNTRY_OF_ORIGIN": {"type": str, "desc": "Country of origin where goods were manufactured."},
-    "PORT_LOADING": {"type": str, "desc": "Port or airport of departure/loading (e.g., AHMEDABAD)."},
-    "PORT_DISCHARGE": {"type": str, "desc": "Port or airport of arrival/destination (e.g., COLOMBO)."},
+    "PORT_OF_LOADING": {"type": str, "desc": "Port or airport of departure/loading (e.g., AHMEDABAD)."},
+    "PORT_OF_DISCHARGE": {"type": str, "desc": "Port or airport of arrival/destination (e.g., COLOMBO)."},
     "VESSEL_NAME": {"type": str, "desc": "Vessel name or Flight number (e.g., 6E1171)."},
     "FREIGHT_AMOUNT": {"type": float, "desc": "Cost of freight (numeric only)."},
     "INSURANCE_AMOUNT": {"type": float, "desc": "Cost of insurance (numeric only)."},
@@ -406,8 +407,8 @@ class LocalExtractor:
         "DESTINATION":       ["destination airport", "destination", "airport of destination", "to"],
         "BL_NUMBER":         ["bl number", "bill of lading no", "b/l no", "b/l number"],
         "VESSEL_NAME":       ["vessel", "vessel name", "ship name", "m/v", "mv"],
-        "PORT_LOADING":      ["port of loading", "load port", "pol"],
-        "PORT_DISCHARGE":    ["port of discharge", "discharge port", "pod", "destination port"],
+        "PORT_OF_LOADING":      ["port of loading", "load port", "pol"],
+        "PORT_OF_DISCHARGE":    ["port of discharge", "discharge port", "pod", "destination port"],
         "CONTAINER_NUMBER":  ["container no", "container number", "ctn no", "cntr"],
         "DO_NUMBER":         ["delivery order no", "do no", "do number"],
         "LC_NUMBER":         ["l/c number", "lc no", "letter of credit no", "lc number"],
@@ -580,7 +581,6 @@ class GeminiFallback:
         if not missing_fields or self._model is None or page_image is None:
             return {}
 
-        import google.generativeai as genai
 
         # Dynamically build Pydantic schema for ONLY the missing fields
         schema_fields = {}
@@ -593,7 +593,7 @@ class GeminiFallback:
         prompt = (
             f"Extract the requested missing fields from this {doc_type}. "
             f"Return ONLY valid JSON according to the schema. "
-            f"If a field is not visibly present in the document, return null."
+            f"If a field is not visibly present in the document, return an empty string for text, or 0.0 for numbers."
         )
 
         try:
@@ -651,8 +651,7 @@ class EntityExtractor:
             self._model = None
         else:
             try:
-                import google.generativeai as genai
-                genai.configure(api_key=api_key)
+                        genai.configure(api_key=api_key)
                 self._model = genai.GenerativeModel("gemini-1.5-pro")
                 logger.info("EntityExtractor: Gemini fallback initialised (gemini-1.5-pro)")
             except Exception as e:
