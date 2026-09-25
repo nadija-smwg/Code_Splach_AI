@@ -12,13 +12,15 @@ export const api = axios.create({
 export async function uploadShipment(files: File[]): Promise<UploadResponse> {
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
+  // Override the default 'application/json' header — let axios auto-generate
+  // the correct 'multipart/form-data' boundary for file uploads.
+  const uploadHeaders = { headers: { 'Content-Type': undefined } };
   // Try the dossier upload endpoint first; fallback to legacy shipments/upload.
-  // NOTE: Do NOT set Content-Type manually — axios auto-generates the multipart boundary.
   try {
-    const { data } = await api.post<UploadResponse>('/upload', formData);
+    const { data } = await api.post<UploadResponse>('/upload', formData, uploadHeaders);
     return data;
   } catch {
-    const { data } = await api.post<UploadResponse>('/shipments/upload', formData);
+    const { data } = await api.post<UploadResponse>('/shipments/upload', formData, uploadHeaders);
     return data;
   }
 }
@@ -55,4 +57,8 @@ export function downloadBlob(blob: Blob, filename: string) {
   document.body.appendChild(a);
   a.click(); a.remove();
   window.URL.revokeObjectURL(url);
+}
+export async function listDossiers(): Promise<{ dossiers: { dossier_id: string; status: string; created_at: string | null; document_count: number; documents: { document_id: string; original_name: string; document_type: string | null; status: string }[] }[] }> {
+  const { data } = await api.get('/dossiers');
+  return data;
 }
