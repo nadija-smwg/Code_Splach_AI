@@ -1,0 +1,123 @@
+# ============================================================
+# docker-compose.yml  (at the project root)
+# ============================================================
+#
+# WHAT IS DOCKER COMPOSE?
+# docker-compose.yml defines ALL your services (containers)
+# in one file and lets you start them all with one command:
+#
+#   docker compose up --build
+#
+# Instead of running 3 separate docker commands for postgres,
+# backend, and frontend — Compose handles all of them together,
+# including networking and startup order.
+#
+# KEY CONCEPTS:
+#   services:  = the containers to run
+#   volumes:   = persistent storage (survives container restarts)
+#   networks:  = private network so containers talk to each other
+# ============================================================
+
+services:
+
+  # ──────────────────────────────────────────────────────────
+  # SERVICE 1: PostgreSQL Database
+  # ──────────────────────────────────────────────────────────
+  # We use the official postgres image — no Dockerfile needed!
+  # Docker Hub already has one ready to use.
+  db:
+    image: postgres:15-alpine        # Use PostgreSQL 15 (alpine = small)
+    container_name: clearancex_db   # Friendly name for the container
+
+    environment:
+      # These env vars configure the postgres container on first run.
+      # POSTGRES_DB creates the database automatically.
+      POSTGRES_DB: clearancex
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    volumes:
+      # Named volume = data persists even if container is stopped/deleted.
+      # Without this, your DB resets every time you restart!
+      - postgres_data:/var/lib/postgresql/data
+
+    ports:
+      # HOST_PORT:CONTAINER_PORT
+      # Exposes postgres on your machine at localhost:5432
+      # so you can connect from tools like TablePlus or DBeaver.
+      - "5433:5432"
+
+    # Health check: Docker waits for postgres to be ready before
+    # allowing other services that "depend_on" this one to start.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d clearancex"]
+      interval: 5s    # check every 5 seconds
+      timeout: 5s     # fail if it takes longer than 5s
+      retries: 10     # try 10 times before giving up
+
+  # ──────────────────────────────────────────────────────────
+  # SERVICE 2: FastAPI Backend
+  # ──────────────────────────────────────────────────────────
+  backend:
+    container_name: clearancex_backend
+    build:
+      context: ./backend       # Build from the backend/ folder
+      dockerfile: Dockerfile   # Use backend/Dockerfile
+
+    environment:
+      # DATABASE_URL uses the service name "db" as the hostname!
+      # Inside Docker's network, containers find each other by service name.
+      # "db" here is the name defined above — not localhost!
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/clearancex
+
+      # Your real Gemini API key goes here (or in a .env file)
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+
+      # CORS: allow requests from the frontend container.
+      # Since the browser accesses the frontend via localhost:3000,
+      # and then the browser makes API calls to localhost:8000,
+      # we need to allow localhost:3000 as a CORS origin.
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000"
+
+    volumes:
+      # Mount uploads folder so uploaded PDFs persist between restarts
+      - ./backend/uploads:/app/uploads
+      # Mount demo PDFs into the container (needed for mock pipeline)
+      - ./demo:/app/demo
+
+    ports:
+      - "8000:8000"    # Backend API available at http://localhost:8000
+
+    depends_on:
+      db:
+        condition: service_healthy   # Wait until postgres passes healthcheck
+
+  # ──────────────────────────────────────────────────────────
+  # SERVICE 3: React Frontend (nginx serving built files)
+  # ──────────────────────────────────────────────────────────
+  frontend:
+    container_name: clearancex_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time env var: tells Vite where the backend API is.
+        # The browser (on the HOST machine) calls localhost:8000,
+        # NOT the Docker internal "backend:8000" hostname!
+        VITE_API_URL: http://localhost:8000/api
+
+    ports:
+      - "3000:80"      # Frontend available at http://localhost:3000
+                       # (nginx inside listens on 80, mapped to 3000 outside)
+
+    depends_on:
+      - backend        # Start frontend after backend is up
+
+
+# ──────────────────────────────────────────────────────────────
+# VOLUMES
+# ──────────────────────────────────────────────────────────────
+# Named volumes are managed by Docker — data survives container restarts.
+volumes:
+  postgres_data:       # Postgres data directory
