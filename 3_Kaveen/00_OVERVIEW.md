@@ -33,8 +33,19 @@ You own **everything the user sees and interacts with**. The judges will evaluat
 | ~~12b~~ | ~~Reasoning Chain Panel (XAI)~~ — ✅ **DONE** | ~~MUST~~ | ~~2–3 hours~~ |
 | ~~13~~ | ~~ASYCUDA Download + Audit Export Buttons~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
 | ~~13b~~ | ~~Counterfactual Cards (XAI)~~ — ✅ **DONE** | ~~MUST~~ | ~~2–3 hours~~ |
-| 14 | Frontend ↔ Backend API Integration | MUST | 2–3 hours |
-| 15 | UI Polish + Responsive + Demo Prep | MUST | 3–4 hours |
+| ~~14~~ | ~~Frontend ↔ Backend API Integration~~ — ✅ **DONE** | ~~MUST~~ | ~~2–3 hours~~ |
+| ~~15~~ | ~~UI Polish + Responsive + Demo Prep~~ — ✅ **DONE** | ~~MUST~~ | ~~3–4 hours~~ |
+| ~~16~~ | ~~Fresh Evaluator Simulation~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~17~~ | ~~README Audit~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~18~~ | ~~Git Repository Audit~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~19~~ | ~~Build / Test Verification~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~20~~ | ~~Security Sanity Check~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~21~~ | ~~Code Quality / Maintainability Audit~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~22~~ | ~~Fix Issues~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~23~~ | ~~Final Requirement Matrix~~ — ✅ **DONE** | ~~MUST~~ | ~~1 hour~~ |
+| ~~24~~ | ~~Final Docker Commands~~ — ✅ **DONE** | ~~MUST~~ | ~~30 min~~ |
+| ~~25~~ | ~~Exact Evaluator Instructions~~ — ✅ **DONE** | ~~MUST~~ | ~~30 min~~ |
+| ~~26~~ | ~~Final Report~~ — ✅ **DONE** 🏁 **READY FOR SUBMISSION** | ~~MUST~~ | ~~1 hour~~ |
 
 **Total estimated: ~30–42 hours across 3–4 days**
 
