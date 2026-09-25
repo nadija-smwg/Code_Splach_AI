@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-interface HeaderProps {
-  onTriggerToast: (toast: { title: string; message: string }) => void;
-}
-
 const primaryNavItems = [
   { path: '/', label: 'Overview' },
   { path: '/dossiers', label: 'Dossiers' },
@@ -17,7 +13,7 @@ const primaryNavItems = [
   { path: '/tariff-directory', label: 'Tariff Directory' },
 ];
 
-export function Header({ onTriggerToast }: HeaderProps) {
+export function Header() {
   const location = useLocation();
   const currentPath = location.pathname;
   
@@ -62,24 +58,9 @@ export function Header({ onTriggerToast }: HeaderProps) {
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-outline px-1 rounded bg-surface-container border border-outline-variant/30">⌘K</span>
             </div>
 
-            <div className="hidden md:flex items-center gap-1.5 bg-surface-container-low px-2.5 py-1.5 rounded-full text-xs font-medium">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
-              </span>
-              <span className="text-on-surface">Sync Active</span>
-              <span className="text-outline">•</span>
-              <span className="text-secondary font-semibold font-mono">2ms</span>
-            </div>
 
-            <button
-              aria-label="Notifications"
-              onClick={() => onTriggerToast({ title: 'ASYCUDA Synchronized', message: 'All Colombo port terminals responding with 100% telemetry pass.' })}
-              className="relative p-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-low transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px]">notifications</span>
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary-container"></span>
-            </button>
+
+
 
             {/* Profile & Dropdown */}
             <div className="relative ml-1">
