@@ -1,4 +1,4 @@
-﻿# backend/ai_pipeline/table_extractor.py
+# backend/ai_pipeline/table_extractor.py
 """
 Phase 07 -- Table / Line-Item Extraction
 =========================================
@@ -212,8 +212,9 @@ class TableExtractor:
         else:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
-            self._model = genai.GenerativeModel("gemini-2.0-flash")
-            logger.info("TableExtractor initialised with gemini-2.0-flash")
+            model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+            self._model = genai.GenerativeModel(model_name)
+            logger.info(f"TableExtractor initialised with {model_name}")
 
     def extract(
         self,

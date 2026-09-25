@@ -253,8 +253,9 @@ class GeminiClassifier:
             )
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash")
-        logger.info("GeminiClassifier initialised with gemini-2.0-flash")
+        model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        self.model = genai.GenerativeModel(model_name)
+        logger.info(f"GeminiClassifier initialised with {model_name}")
 
     def classify(self, pdf_path: str) -> Optional[ClassificationResult]:
         """
