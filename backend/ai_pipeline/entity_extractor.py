@@ -117,31 +117,35 @@ ENTITY_SCHEMAS: dict[str, list[str]] = {
     "commercial_invoice": [
         "INVOICE_NUMBER", "INVOICE_DATE", "CONSIGNEE_NAME", "CONSIGNEE_ADDRESS",
         "SHIPPER_NAME", "INCOTERM", "PAYMENT_TERMS", "TOTAL_AMOUNT",
-        "CURRENCY", "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT",
+        "CURRENCY_CODE", "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT",
+        "HS_CODE", "COUNTRY_OF_ORIGIN", "PORT_LOADING", "PORT_DISCHARGE",
+        "VESSEL_NAME", "FREIGHT_AMOUNT", "INSURANCE_AMOUNT"
     ],
     "packing_list": [
         "GROSS_WEIGHT", "NET_WEIGHT", "TARE_WEIGHT", "PACKAGE_COUNT",
-        "VOLUME", "SHIPPING_MARKS",
+        "VOLUME", "SHIPPING_MARKS", "CONSIGNEE_NAME", "SHIPPER_NAME"
     ],
     "awb": [
-        "AWB_NUMBER", "FLIGHT_NUMBER", "ORIGIN", "DESTINATION",
+        "AWB_NUMBER", "VESSEL_NAME", "ORIGIN", "DESTINATION",
         "GROSS_WEIGHT", "PACKAGE_COUNT", "SHIPPER_NAME", "CONSIGNEE_NAME",
+        "TOTAL_AMOUNT", "CURRENCY_CODE", "FREIGHT_AMOUNT", "INSURANCE_AMOUNT"
     ],
     "bl": [
         "BL_NUMBER", "VESSEL_NAME", "PORT_LOADING", "PORT_DISCHARGE",
-        "GROSS_WEIGHT", "PACKAGE_COUNT", "CONTAINER_NUMBER",
+        "GROSS_WEIGHT", "PACKAGE_COUNT", "CONTAINER_NUMBER", "CONSIGNEE_NAME", 
+        "SHIPPER_NAME"
     ],
     "freight_invoice": [
         "INVOICE_NUMBER", "INVOICE_DATE", "CONSIGNEE_NAME", "SHIPPER_NAME",
-        "TOTAL_AMOUNT", "CURRENCY", "BL_NUMBER", "CONTAINER_NUMBER",
+        "TOTAL_AMOUNT", "CURRENCY_CODE", "BL_NUMBER", "CONTAINER_NUMBER"
     ],
     "delivery_order": [
         "DO_NUMBER", "CONSIGNEE_NAME", "CONTAINER_NUMBER",
-        "GROSS_WEIGHT", "PACKAGE_COUNT", "PORT_DISCHARGE",
+        "GROSS_WEIGHT", "PACKAGE_COUNT", "PORT_DISCHARGE"
     ],
     "letter_of_credit": [
         "LC_NUMBER", "ISSUING_BANK", "BENEFICIARY", "CONSIGNEE_NAME",
-        "TOTAL_AMOUNT", "CURRENCY", "INCOTERM", "EXPIRY_DATE",
+        "TOTAL_AMOUNT", "CURRENCY_CODE", "INCOTERM", "EXPIRY_DATE"
     ],
 }
 
@@ -154,7 +158,7 @@ FIELD_DEFINITIONS = {
     "INCOTERM": {"type": str, "desc": "Incoterm (e.g., CIF, FOB, EXW)."},
     "PAYMENT_TERMS": {"type": str, "desc": "Payment terms (e.g., LC AT SIGHT, 30 Days)."},
     "TOTAL_AMOUNT": {"type": float, "desc": "Total invoice or declared amount (numeric only)."},
-    "CURRENCY": {"type": str, "desc": "3-letter currency code (e.g., USD, EUR, LKR)."},
+    "CURRENCY_CODE": {"type": str, "desc": "3-letter currency code (e.g., USD, EUR, LKR)."},
     "GROSS_WEIGHT": {"type": float, "desc": "Total gross weight (numeric only)."},
     "NET_WEIGHT": {"type": float, "desc": "Total net weight (numeric only). DO NOT extract bank account numbers."},
     "TARE_WEIGHT": {"type": float, "desc": "Tare weight of containers/packaging (numeric only)."},
@@ -190,7 +194,7 @@ _DEFAULT_BBOX = [0, 0, 0, 0]
 _MIN_OCR_CONFIDENCE = 0.60
 
 # Minimum local extraction confidence to skip Gemini
-_LOCAL_CONFIDENCE_GATE = 0.85
+_LOCAL_CONFIDENCE_GATE = 1.10
 
 
 # ---------------------------------------------------------------------------
@@ -334,7 +338,7 @@ class LocalExtractor:
             r"(\d[\d,]*\s*(?:Carton[s]?|Ctn[s]?|pcs?|Piece[s]?|Package[s]?|Box(?:es)?|"
             r"Pallet[s]?|Unit[s]?|Roll[s]?))\b",
         ],
-        "CURRENCY": [
+        "CURRENCY_CODE": [
             r"\b(USD|EUR|GBP|JPY|LKR|AUD|CAD|SGD|CHF)\b",
         ],
         "TOTAL_AMOUNT": [
@@ -388,7 +392,7 @@ class LocalExtractor:
         "INCOTERM":          ["incoterm", "incoterms", "terms of sale", "delivery terms"],
         "PAYMENT_TERMS":     ["payment terms", "payment", "terms of payment"],
         "TOTAL_AMOUNT":      ["total invoice value", "total amount", "grand total", "invoice total", "total"],
-        "CURRENCY":          ["currency"],
+        "CURRENCY_CODE":          ["currency"],
         "GROSS_WEIGHT":      ["gross weight", "total gross weight", "gross wt", "gross"],
         "NET_WEIGHT":        ["net weight", "total net weight", "net wt", "net"],
         "TARE_WEIGHT":       ["tare weight", "tare wt", "tare"],
@@ -544,7 +548,7 @@ class LocalExtractor:
         }
         if entity_type in numeric_fields:
             return weight_like or number_like
-        if entity_type in {"CURRENCY"}:
+        if entity_type in {"CURRENCY_CODE"}:
             return bool(re.match(r"^(USD|EUR|GBP|JPY|LKR|AUD|CAD|SGD|CHF)$", c, re.I))
         if entity_type in {"INVOICE_NUMBER", "AWB_NUMBER", "BL_NUMBER",
                            "CONTAINER_NUMBER", "DO_NUMBER", "LC_NUMBER"}:

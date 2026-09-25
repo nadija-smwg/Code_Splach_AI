@@ -149,7 +149,7 @@ class EntityNormalizer:
                 }
 
             # CURRENCY ──────────────────────────────────────────────────
-            if entity_type == "CURRENCY":
+            if entity_type == "CURRENCY_CODE" or entity_type == "CURRENCY":
                 return {
                     "normalized_value": self._normalize_currency(raw_value),
                     "unit": None,
