@@ -23,6 +23,8 @@ class AuditEntry:
     action: str
     confidence: Optional[float]
     outcome: str
+    reasoning: Optional[str] = field(default=None)
+    details: Optional[Dict] = field(default=None)
     event_hash: str = field(default="")
 
     def __post_init__(self):

@@ -1,10 +1,11 @@
-fastapi==0.104.1
+fastapi==0.115.6
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 python-dotenv==1.0.0
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
-pydantic==2.5.2
+pydantic==2.10.4
+networkx>=3.2.1
 
 # Phase 09 — Normalization + Dossier Upload
 python-dateutil==2.9.0      # date normalization (ISO 8601 parsing)

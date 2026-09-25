@@ -88,7 +88,7 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
 
       onTriggerToast({
         title: 'Dossier Transmitted',
-        message: `Shipment ${response.shipment_id.slice(0, 8)}... processed — ${response.documents.length} documents ingested.`,
+        message: `Shipment ${response.shipment_id.slice(0, 8)}... processed — ${response.documents?.length ?? response.document_count ?? 0} documents ingested.`,
         type: 'success',
       });
 

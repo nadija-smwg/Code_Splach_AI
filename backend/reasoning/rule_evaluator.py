@@ -1,7 +1,7 @@
 import networkx as nx
 from typing import List, Any
 from dataclasses import dataclass, field
-from backend.reasoning.semantic_fallback import SemanticFallback
+from reasoning.semantic_fallback import SemanticFallback
 
 
 @dataclass

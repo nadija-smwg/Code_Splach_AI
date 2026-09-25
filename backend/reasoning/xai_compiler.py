@@ -1,10 +1,10 @@
 import networkx as nx
 from typing import Dict, List
-from backend.xai_types import (
+from xai_types import (
     XAIBlock, XAILayer1_Provenance, XAILayer2_ReasoningChain,
     XAILayer3_Confidence, XAILayer4_Counterfactual
 )
-from backend.reasoning.rule_evaluator import RuleFailure
+from reasoning.rule_evaluator import RuleFailure
 
 
 class XAICompiler:

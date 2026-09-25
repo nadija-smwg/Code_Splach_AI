@@ -12,16 +12,13 @@ export const api = axios.create({
 export async function uploadShipment(files: File[]): Promise<UploadResponse> {
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
-  // Try the dossier upload endpoint first; fallback to legacy shipments/upload
+  // Try the dossier upload endpoint first; fallback to legacy shipments/upload.
+  // NOTE: Do NOT set Content-Type manually — axios auto-generates the multipart boundary.
   try {
-    const { data } = await api.post<UploadResponse>('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const { data } = await api.post<UploadResponse>('/upload', formData);
     return data;
   } catch {
-    const { data } = await api.post<UploadResponse>('/shipments/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const { data } = await api.post<UploadResponse>('/shipments/upload', formData);
     return data;
   }
 }

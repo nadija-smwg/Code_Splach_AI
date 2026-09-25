@@ -125,7 +125,12 @@ export interface ShipmentStatus {
 export interface UploadResponse {
   shipment_id: string;
   status: string;
-  documents: { document_id: string; filename: string; status: string }[];
+  // Legacy /shipments/upload shape
+  documents?: { document_id: string; filename: string; status: string }[];
+  // Dossier /api/upload shape
+  document_count?: number;
+  document_ids?: string[];
+  status_url?: string;
 }
 
 // ============================================

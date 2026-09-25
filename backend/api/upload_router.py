@@ -25,9 +25,16 @@ _manager = None
 def _get_manager():
     global _manager
     if _manager is None:
-        from ai_pipeline.dossier_manager import DossierManager
-
-        _manager = DossierManager()
+        try:
+            from ai_pipeline.dossier_manager import DossierManager
+            _manager = DossierManager()
+        except Exception as e:
+            logger.warning(
+                "DossierManager could not be initialised (AI deps unavailable?): %s. "
+                "Upload endpoints will return 503 until resolved.",
+                e,
+            )
+            return None
     return _manager
 
 
@@ -86,6 +93,11 @@ async def upload_dossier(
         )
 
     manager = _get_manager()
+    if manager is None:
+        raise HTTPException(
+            status_code=503,
+            detail="AI pipeline unavailable. Check server logs for details.",
+        )
 
     doc_ids = manager.create_dossier(
         dossier_id=dossier_id,
@@ -104,7 +116,7 @@ async def upload_dossier(
     return JSONResponse(
         status_code=202,
         content={
-            "dossier_id": dossier_id,
+            "shipment_id": dossier_id,
             "document_count": len(saved),
             "document_ids": doc_ids,
             "status": "processing",
@@ -136,6 +148,11 @@ async def dossier_status(dossier_id: str) -> JSONResponse:
         error       — at least one document failed
     """
     manager = _get_manager()
+    if manager is None:
+        raise HTTPException(
+            status_code=503,
+            detail="AI pipeline unavailable. Check server logs for details.",
+        )
     result = manager.get_status(dossier_id)
 
     if result is None:

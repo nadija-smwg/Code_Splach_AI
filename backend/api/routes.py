@@ -18,9 +18,9 @@ def _build_demo_graph(shipment_id: str):
     Returns (kb, documents) where kb is a KnowledgeBuilder and documents is
     the list of pipeline result dicts.
     """
-    from backend.ai_pipeline.mock_pipeline import MockPipeline
-    from backend.reasoning.knowledge_builder import KnowledgeBuilder
-    from backend.xai_types import ExtractedEntity
+    from ai_pipeline.mock_pipeline import MockPipeline
+    from reasoning.knowledge_builder import KnowledgeBuilder
+    from xai_types import ExtractedEntity
 
     mp = MockPipeline()
     demo_docs = [
@@ -87,7 +87,7 @@ async def upload_shipment(files: List[UploadFile] = File(...)):
     from fastapi import HTTPException
 
     for file in files:
-        if not file.filename.lower().endswith(".pdf"):
+        if not (file.filename or "").lower().endswith(".pdf"):
             raise HTTPException(
                 status_code=400,
                 detail=f"Only PDF files accepted. '{file.filename}' is not a PDF."
@@ -131,7 +131,7 @@ async def get_shipment_status(shipment_id: str):
 
 @router.get("/shipments/{shipment_id}/extraction")
 async def get_extraction(shipment_id: str):
-    from backend.ai_pipeline.mock_pipeline import MockPipeline
+    from ai_pipeline.mock_pipeline import MockPipeline
     mp = MockPipeline()
     demo_docs = [
         ("demo/commercial_invoice.pdf", "doc_001"),
@@ -159,9 +159,9 @@ async def get_knowledge_graph(shipment_id: str):
 
 @router.get("/shipments/{shipment_id}/discrepancies")
 async def get_discrepancies(shipment_id: str):
-    from backend.reasoning.rule_evaluator import RuleEvaluator
-    from backend.reasoning.xai_compiler import XAICompiler
-    from backend.reasoning.audit_trail import build_demo_trail
+    from reasoning.rule_evaluator import RuleEvaluator
+    from reasoning.xai_compiler import XAICompiler
+    from reasoning.audit_trail import build_demo_trail
 
     kb, documents = _build_demo_graph(shipment_id)
     graph = kb.get_graph()
@@ -204,7 +204,7 @@ async def get_discrepancies(shipment_id: str):
 
 @router.get("/shipments/{shipment_id}/audit-trail")
 async def get_audit_trail(shipment_id: str):
-    from backend.reasoning.audit_trail import get_trail, build_demo_trail
+    from reasoning.audit_trail import get_trail, build_demo_trail
 
     # Seed demo trail if not yet built (e.g. if discrepancies endpoint not called first)
     trail = get_trail(shipment_id)
@@ -229,13 +229,15 @@ async def get_audit_trail(shipment_id: str):
 
 @router.get("/shipments/{shipment_id}/asycuda-export")
 async def export_asycuda(shipment_id: str):
-    from backend.reasoning.asycuda_export import generate_cusdec_xml
+    from reasoning.asycuda_export import generate_cusdec_xml
 
     try:
         kb, _ = _build_demo_graph(shipment_id)
         xml = generate_cusdec_xml(kb.get_graph(), shipment_id)
-    except Exception:
-        from backend.reasoning.asycuda_export import generate_demo_cusdec_xml
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("ASYCUDA real export failed, falling back to demo: %s", e)
+        from reasoning.asycuda_export import generate_demo_cusdec_xml
         xml = generate_demo_cusdec_xml(shipment_id)
 
     return Response(

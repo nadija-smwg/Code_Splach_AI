@@ -1,6 +1,6 @@
 import networkx as nx
 from typing import Dict
-from backend.xai_types import ExtractedEntity
+from xai_types import ExtractedEntity
 
 class KnowledgeBuilder:
     """
@@ -51,19 +51,52 @@ class KnowledgeBuilder:
         """Serialize graph for vis.js frontend visualization."""
         nodes = []
         for node_id, data in self.graph.nodes(data=True):
+            node_type = data.get("node_type", "unknown")
+
+            # Determine color and shape based on node type and status
+            if node_type == "document":
+                color = {"background": "#4A90D9", "border": "#2563eb"}
+                shape = "box"
+                size = 20
+            else:
+                # Entity node — colour by presence in MUST_MATCH edges
+                neighbors = list(self.graph.neighbors(node_id))
+                in_conflict = any(
+                    self.graph.edges[node_id, nb].get("relationship") == "MUST_MATCH"
+                    for nb in neighbors
+                    if self.graph.has_edge(node_id, nb)
+                )
+                color = {"background": "#f59e0b", "border": "#d97706"} if in_conflict else {"background": "#10b981", "border": "#059669"}
+                shape = "dot"
+                size = 12
+
             node = {
                 "id": node_id,
                 "label": data.get("label", node_id),
-                "type": data.get("node_type", "unknown"),
+                "type": node_type,
+                "color": color,
+                "shape": shape,
+                "size": size,
+                "document_type": data.get("document_type"),
+                "status": "conflict" if node_type == "entity" and in_conflict else "pending",  # type: ignore[possibly-undefined]
+                "shadow": True,
+                "font": {"color": "#e2e8f0"},
             }
             nodes.append(node)
-        
+
         edges = []
         for u, v, data in self.graph.edges(data=True):
+            relationship = data.get("relationship", "")
+            # Confidence proxy: MUST_MATCH edges carry 1.0; EXTRACTED_FROM carry 0.9
+            confidence = 0.9 if relationship == "EXTRACTED_FROM" else 1.0
             edges.append({
                 "from": u,
                 "to": v,
-                "label": data.get("relationship", ""),
+                "label": relationship,
+                "confidence": confidence,
+                "width": 2 if relationship == "MUST_MATCH" else 1,
+                "color": {"color": "#f59e0b"} if relationship == "MUST_MATCH" else {"color": "#64748b"},
+                "font": {"color": "#94a3b8", "size": 10},
             })
-        
+
         return {"nodes": nodes, "edges": edges}
