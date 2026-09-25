@@ -586,7 +586,7 @@ class GeminiFallback:
         schema_fields = {}
         for f in missing_fields:
             field_meta = FIELD_DEFINITIONS.get(f, {"type": str, "desc": ""})
-            schema_fields[f] = (Optional[field_meta["type"]], Field(default=None, description=field_meta["desc"]))
+            schema_fields[f] = (field_meta["type"], Field(default=None, description=field_meta["desc"]))
 
         DynamicSchema = create_model(f"{doc_type.capitalize()}Schema", **schema_fields)
 
