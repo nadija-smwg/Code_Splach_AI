@@ -9,7 +9,8 @@ networkx>=3.2.1
 
 # Phase 09 — Normalization + Dossier Upload
 python-dateutil==2.9.0      # date normalization (ISO 8601 parsing)
-google-genai>=0.8.0          # Gemini Tier 3 semantic canonicalization
+google-generativeai>=0.8.3   # Gemini Tier 3 semantic canonicalization
 pdf2image==1.17.0            # PDF page → PIL image for Gemini Vision
-paddlepaddle>=2.6.2          # Required for PaddleOCR
-paddleocr>=2.7.3             # AI extraction OCR engine
+numpy<2.0                    # Pinned to fix Numpy 2.0 ABI crash
+paddlepaddle==2.6.2          # Required for PaddleOCR (Pinned to fix 3.x bug)
+paddleocr==2.7.0.3           # Pinned to stable 2.7.0.3 to prevent paddlex crashing

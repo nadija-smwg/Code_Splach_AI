@@ -15,7 +15,7 @@
 # ---  STAGE 1: Choose a base image  ---
 # FROM = "start from this pre-built image"
 # python:3.11-slim = official Python 3.11, minimal size (no extras)
-FROM python:3.11-slim
+FROM python:3.10-slim
 
 # ---  Set the working directory inside the container  ---
 # WORKDIR = "from now on, all commands run from /app"
@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     libgl1 \
     libglib2.0-0 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # ---  Copy only requirements FIRST  ---
@@ -39,7 +40,8 @@ COPY requirements.txt .
 
 # ---  Install Python dependencies  ---
 # --no-cache-dir = don't save pip cache inside image (saves space)
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --default-timeout=1000 --retries=10 --no-cache-dir -r requirements.txt
 
 # ---  Copy the rest of the application code  ---
 # COPY <source-on-host> <destination-in-container>

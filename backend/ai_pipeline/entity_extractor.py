@@ -651,7 +651,7 @@ class EntityExtractor:
             self._model = None
         else:
             try:
-                        genai.configure(api_key=api_key)
+                genai.configure(api_key=api_key)
                 self._model = genai.GenerativeModel("gemini-1.5-pro")
                 logger.info("EntityExtractor: Gemini fallback initialised (gemini-1.5-pro)")
             except Exception as e:
