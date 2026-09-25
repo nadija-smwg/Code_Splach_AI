@@ -77,3 +77,46 @@ class Correction(Base):
     corrected_value = Column(Text)
     reason = Column(Text)
     created_at = Column(DateTime, server_default=func.now())
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 09 — Normalizer cache, Dossier upload tables
+# Previously only defined in schema.sql; now added as SQLAlchemy models so
+# Base.metadata.create_all() (called by init_db() on startup) creates them
+# automatically in a fresh environment — no manual psql step needed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class NormCache(Base):
+    __tablename__ = 'norm_cache'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cache_key = Column(String(255), nullable=False, unique=True)
+    entity_type = Column(String(50), nullable=False)
+    raw_value = Column(Text, nullable=False)
+    canonical = Column(Text, nullable=False)
+    source = Column(String(20), nullable=False, default='llm')
+    hit_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_used = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Dossier(Base):
+    """One dossier = one shipment upload (groups 1-N documents)."""
+    __tablename__ = 'dossiers'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    status = Column(String(20), nullable=False, default='pending')
+
+
+class DossierDocument(Base):
+    """One row per PDF file within a dossier."""
+    __tablename__ = 'dossier_documents'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dossier_id = Column(UUID(as_uuid=True), ForeignKey('dossiers.id', ondelete='CASCADE'), nullable=False)
+    original_name = Column(Text, nullable=False)
+    file_path = Column(Text, nullable=False)
+    document_type = Column(String(50))
+    status = Column(String(20), nullable=False, default='pending')
+    error_message = Column(Text)
+    extraction_json = Column(JSONB)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
