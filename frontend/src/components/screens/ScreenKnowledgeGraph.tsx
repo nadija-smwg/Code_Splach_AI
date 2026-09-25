@@ -69,7 +69,8 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
   useEffect(() => {
     if (!graphData || !containerRef.current || loading) return;
 
-    let network: import('vis-network').Network | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let network: any = null;
 
     import('vis-network').then(({ Network }) => {
       import('vis-data').then(({ DataSet }) => {
@@ -102,7 +103,7 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
 
         network = new Network(containerRef.current!, { nodes, edges }, VIS_OPTIONS);
 
-        network.on('selectNode', (params) => {
+        network.on('selectNode', (params: { nodes: string[] }) => {
           if (params.nodes.length > 0) {
             const nodeId = params.nodes[0];
             const found = graphData.nodes.find(n => n.id === nodeId);
