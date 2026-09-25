@@ -114,14 +114,53 @@ async def upload_shipment(files: List[UploadFile] = File(...)):
 
 @router.get("/shipments/{shipment_id}/status")
 async def get_shipment_status(shipment_id: str):
+    from fastapi import HTTPException
+
+    # Demo fixture — always available even without real uploads
+    DEMO_DOCS = [
+        {"document_id": "doc_001", "filename": "commercial_invoice.pdf", "document_type": "commercial_invoice", "classification_confidence": 0.97},
+        {"document_id": "doc_002", "filename": "packing_list.pdf",       "document_type": "packing_list",       "classification_confidence": 0.96},
+        {"document_id": "doc_003", "filename": "awb.pdf",                "document_type": "awb",                "classification_confidence": 0.95},
+    ]
+
+    # For demo/test shipment IDs return the fixture immediately
+    if shipment_id in ("demo-shipment", "demo"):
+        return {
+            "shipment_id": shipment_id,
+            "status": "completed",
+            "progress": 100,
+            "documents": DEMO_DOCS,
+            "processing_time_ms": 3150,
+        }
+
+    # For real uploaded shipments — inspect the uploads directory
+    shipment_dir = os.path.join(UPLOAD_DIR, shipment_id)
+    if not os.path.isdir(shipment_dir):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Shipment '{shipment_id}' not found.",
+        )
+
+    # Build a document list from whatever PDFs are on disk
+    documents = []
+    for fname in sorted(os.listdir(shipment_dir)):
+        if fname.lower().endswith(".pdf"):
+            # Strip the leading UUID prefix added during upload (uuid4_filename.pdf)
+            parts = fname.split("_", 1)
+            display_name = parts[1] if len(parts) == 2 else fname
+            documents.append({
+                "document_id": parts[0] if len(parts) == 2 else fname,
+                "filename": display_name,
+                "document_type": "unknown",
+                "classification_confidence": None,
+            })
+
     return {
-        "shipment_id": shipment_id, "status": "completed", "progress": 100,
-        "documents": [
-            {"document_id": "doc_001", "filename": "commercial_invoice.pdf", "document_type": "commercial_invoice", "classification_confidence": 0.97},
-            {"document_id": "doc_002", "filename": "packing_list.pdf",       "document_type": "packing_list",       "classification_confidence": 0.96},
-            {"document_id": "doc_003", "filename": "awb.pdf",                "document_type": "awb",                "classification_confidence": 0.95},
-        ],
-        "processing_time_ms": 3150,
+        "shipment_id": shipment_id,
+        "status": "completed",
+        "progress": 100,
+        "documents": documents,
+        "processing_time_ms": None,
     }
 
 
