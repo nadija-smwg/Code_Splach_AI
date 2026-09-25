@@ -1,4 +1,4 @@
-import { useState, useRef, DragEvent, ChangeEvent } from 'react';
+import { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadShipment } from '../../utils/api';
 import { useShipment } from '../../hooks/useShipment';

@@ -54,7 +54,7 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
     setError(null);
     getDiscrepancies(activeId)
       .then(res => {
-        setDiscrepancies((res as { discrepancies: ApiDiscrepancy[] }).discrepancies ?? []);
+        setDiscrepancies((res as unknown as { discrepancies: ApiDiscrepancy[] }).discrepancies ?? []);
       })
       .catch(err => {
         setError(err.message || 'Failed to load discrepancies from backend.');
@@ -89,7 +89,7 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
           </p>
         </div>
         <button
-          onClick={() => { setLoading(true); getDiscrepancies(activeId).then(r => setDiscrepancies((r as { discrepancies: ApiDiscrepancy[] }).discrepancies ?? [])).finally(() => setLoading(false)); }}
+          onClick={() => { setLoading(true); getDiscrepancies(activeId).then(r => setDiscrepancies((r as unknown as { discrepancies: ApiDiscrepancy[] }).discrepancies ?? [])).finally(() => setLoading(false)); }}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container shadow-sm transition-all"
         >
           <span className="material-symbols-outlined text-[16px]">sync</span>
