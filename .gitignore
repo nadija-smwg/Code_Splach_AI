@@ -25,9 +25,15 @@ dist-ssr
 
 # Python / Backend
 venv/
+backend/venv/
 __pycache__/
 *.pyc
+
+# Environment files — never commit real secrets
+# NOTE: .env.example files are intentionally NOT excluded (they are safe templates)
 .env
+backend/.env
+frontend/.env
 
 1_Nadija/
 2_Aloka/
