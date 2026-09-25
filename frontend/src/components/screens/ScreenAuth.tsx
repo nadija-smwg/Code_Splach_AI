@@ -27,6 +27,22 @@ export function ScreenSignIn({ onTriggerToast }: Props) {
           <p className="text-[11px] text-outline mt-1">Enter your broker credentials to access the clearance terminal.</p>
         </div>
 
+        {/* Demo Mode Notice */}
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[11px] uppercase tracking-wider">
+            <span className="material-symbols-outlined text-[14px]">info</span>
+            Demo Mode — Authentication is simulated
+          </div>
+          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+            Any credentials will grant access. Use the pre-filled demo values or enter your own.
+          </p>
+          <div className="font-mono text-[10px] bg-surface-container-highest rounded px-2 py-1 text-on-surface mt-0.5">
+            Email: <span className="text-primary">broker.id@freightforwarder.lk</span>
+            &nbsp;·&nbsp;
+            Password: <span className="text-primary">password123</span>
+          </div>
+        </div>
+
         <div className="bg-surface-container-low p-1 rounded-lg flex items-center">
           <button onClick={() => setAuthMode('credentials')}
             className={`flex-1 py-1.5 rounded-md font-semibold text-[11px] transition-all ${authMode === 'credentials' ? 'bg-white shadow-sm text-on-surface' : 'text-outline'}`}>
