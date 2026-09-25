@@ -28,6 +28,8 @@ WORKDIR /app
 # We clean apt cache after to keep the image small.
 RUN apt-get update && apt-get install -y \
     poppler-utils \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # ---  Copy only requirements FIRST  ---

@@ -33,8 +33,8 @@ services:
       # These env vars configure the postgres container on first run.
       # POSTGRES_DB creates the database automatically.
       POSTGRES_DB: clearancex
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
 
     volumes:
       # Named volume = data persists even if container is stopped/deleted.
@@ -50,7 +50,7 @@ services:
     # Health check: Docker waits for postgres to be ready before
     # allowing other services that "depend_on" this one to start.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d clearancex"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d clearancex"]
       interval: 5s    # check every 5 seconds
       timeout: 5s     # fail if it takes longer than 5s
       retries: 10     # try 10 times before giving up
@@ -68,8 +68,7 @@ services:
       - .env
     environment:
       # We override DATABASE_URL here because inside Docker, the host is "db", not "localhost".
-      # We use the same 'user' and 'password' from your .env file.
-      DATABASE_URL: postgresql://user:password@db:5432/clearancex
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/clearancex
 
     volumes:
       # Mount uploads folder so uploaded PDFs persist between restarts

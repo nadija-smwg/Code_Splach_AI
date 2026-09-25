@@ -106,13 +106,10 @@ def _get_demo_documents() -> list:
 def _get_documents_for_shipment(shipment_id: str) -> list:
     """
     Resolve pipeline result dicts for a shipment.
-    Priority: real DB data → demo MockPipeline fallback.
+    Always uses real DB data. Never falls back to demo.
     """
-    if not _is_demo(shipment_id):
-        real = _fetch_dossier_documents(shipment_id)
-        if real is not None:
-            return real
-    return _get_demo_documents()
+    real = _fetch_dossier_documents(shipment_id)
+    return real if real is not None else []
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -242,14 +239,10 @@ def _build_demo_graph(shipment_id: str):
 def _get_graph_for_shipment(shipment_id: str):
     """
     Smart graph router:
-    - Real dossier in DB → generic graph from real data.
-    - Demo / fallback    → curated demo graph.
+    Always uses real DB data. Never falls back to demo.
     """
-    if not _is_demo(shipment_id):
-        real = _fetch_dossier_documents(shipment_id)
-        if real is not None:
-            return _build_graph_from_documents(shipment_id, real)
-    return _build_demo_graph(shipment_id)
+    real = _fetch_dossier_documents(shipment_id)
+    return _build_graph_from_documents(shipment_id, real if real is not None else [])
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -284,18 +277,6 @@ async def upload_shipment(files: List[UploadFile] = File(...)):
 
 @router.get("/shipments/{shipment_id}/status")
 async def get_shipment_status(shipment_id: str):
-    DEMO_DOCS = [
-        {"document_id": "doc_001", "filename": "commercial_invoice.pdf", "document_type": "commercial_invoice", "classification_confidence": 0.97},
-        {"document_id": "doc_002", "filename": "packing_list.pdf",       "document_type": "packing_list",       "classification_confidence": 0.96},
-        {"document_id": "doc_003", "filename": "awb.pdf",                "document_type": "awb",                "classification_confidence": 0.95},
-    ]
-
-    if _is_demo(shipment_id):
-        return {
-            "shipment_id": shipment_id, "status": "completed", "progress": 100,
-            "documents": DEMO_DOCS, "processing_time_ms": 3150,
-        }
-
     # Real dossier — query PostgreSQL
     try:
         from database.connection import SessionLocal

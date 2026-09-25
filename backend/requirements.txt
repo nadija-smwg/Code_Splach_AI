@@ -11,3 +11,5 @@ networkx>=3.2.1
 python-dateutil==2.9.0      # date normalization (ISO 8601 parsing)
 google-genai>=0.8.0          # Gemini Tier 3 semantic canonicalization
 pdf2image==1.17.0            # PDF page → PIL image for Gemini Vision
+paddlepaddle>=2.6.2          # Required for PaddleOCR
+paddleocr>=2.7.3             # AI extraction OCR engine

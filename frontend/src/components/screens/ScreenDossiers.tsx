@@ -81,14 +81,39 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
       setProgress(30);
 
       const response = await uploadShipment(files);
-      setProgress(80);
+      setProgress(50);
 
       setShipmentId(response.shipment_id);
-      setProgress(100);
+      
+      // We must WAIT for the AI pipeline to finish processing the documents in the background.
+      // Otherwise, if we navigate immediately, the database won't have the results yet,
+      // and the next screen will fall back to the demo data.
+      let isDone = false;
+      while (!isDone) {
+        // Wait 3 seconds between polls
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        try {
+          const { getShipmentStatus } = await import('../../utils/api');
+          const statusRes = await getShipmentStatus(response.shipment_id);
+          
+          if (statusRes.status === 'completed' || (statusRes.status as string) === 'done') {
+            isDone = true;
+            setProgress(100);
+          } else if (statusRes.status === 'error') {
+            throw new Error('AI Pipeline encountered an error during extraction.');
+          } else {
+            // Still processing, maybe update progress slightly to show activity
+            setProgress(p => Math.min(p + 5, 95));
+          }
+        } catch (pollErr) {
+          console.warn("Polling error (might be temporary):", pollErr);
+        }
+      }
 
       onTriggerToast({
-        title: 'Dossier Transmitted',
-        message: `Shipment ${response.shipment_id.slice(0, 8)}... processed — ${response.documents?.length ?? response.document_count ?? 0} documents ingested.`,
+        title: 'Dossier Transmitted & Processed',
+        message: `Shipment ${response.shipment_id.slice(0, 8)}... AI Extraction Complete.`,
         type: 'success',
       });
 
@@ -207,66 +232,81 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
 
         {/* File Stack + Submit */}
         <div className="lg:col-span-6 bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary-fixed/40 flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[18px]">layers</span>
+          {isProcessing ? (
+            <div className="flex flex-col items-center justify-center h-full flex-1 gap-5 py-8">
+              <div className="relative w-32 h-32 flex items-center justify-center">
+                <svg className="absolute inset-0 w-full h-full text-surface-container-highest" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="45" fill="none" strokeWidth="8" stroke="currentColor" />
+                </svg>
+                <svg className="absolute inset-0 w-full h-full text-primary drop-shadow-md" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="50" cy="50" r="45" fill="none" strokeWidth="8" stroke="currentColor" strokeDasharray="283" strokeDashoffset={283 - (progress / 100) * 283} className="transition-all duration-500 ease-out" strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-primary">
+                  <span className="text-2xl font-mono font-bold tracking-tighter">{Math.round(progress)}%</span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-on-surface">Queued Dossier Stack</h3>
-                <p className="text-[11px] text-on-surface-variant">{fileStack.length} document{fileStack.length !== 1 ? 's' : ''} queued</p>
+              <div className="text-center animate-pulse">
+                <h3 className="text-base font-semibold text-on-surface mb-1">AI Pipeline Processing</h3>
+                <p className="text-xs text-on-surface-variant max-w-[250px] mx-auto">
+                  Extracting entities, normalizing data, and cross-examining {fileStack.length} document{fileStack.length !== 1 ? 's' : ''}...
+                </p>
               </div>
-            </div>
-            <button onClick={() => setFileStack([])} className="text-xs text-outline hover:text-on-surface transition-colors">Clear All</button>
-          </div>
-
-          {fileStack.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-xs text-on-surface-variant gap-2">
-              <span className="material-symbols-outlined text-[32px] text-outline">inbox</span>
-              <span>No files queued. Drop PDFs above to begin.</span>
             </div>
           ) : (
-            <div className="space-y-2">
-              {fileStack.map((file, idx) => (
-                <div key={idx} className="bg-surface-container-low rounded-lg p-2.5 px-3 flex items-center justify-between text-xs shadow-sm">
-                  <div className="flex items-center gap-3 truncate">
-                    <div className="w-8 h-8 rounded bg-primary-fixed/30 text-primary flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[18px]">{file.icon}</span>
-                    </div>
-                    <div className="truncate">
-                      <div className="font-semibold text-on-surface truncate">{file.name}</div>
-                      <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-0.5">
-                        <span>{file.size}</span><span>•</span>
-                        <span className="text-secondary font-medium">{file.status}</span>
-                      </div>
-                    </div>
+            <>
+              <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-primary-fixed/40 flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined text-[18px]">layers</span>
                   </div>
-                  <button onClick={() => setFileStack(prev => prev.filter((_, i) => i !== idx))}
-                    className="p-1 hover:bg-surface-container rounded text-outline hover:text-error">
-                    <span className="material-symbols-outlined text-[16px]">close</span>
-                  </button>
+                  <div>
+                    <h3 className="text-sm font-semibold text-on-surface">Queued Dossier Stack</h3>
+                    <p className="text-[11px] text-on-surface-variant">{fileStack.length} document{fileStack.length !== 1 ? 's' : ''} queued</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+                <button onClick={() => setFileStack([])} className="text-xs text-outline hover:text-on-surface transition-colors">Clear All</button>
+              </div>
 
-          {/* Progress bar */}
-          {isProcessing && (
-            <div className="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
-              <div className="bg-primary h-1.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
-            </div>
-          )}
+              {fileStack.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-xs text-on-surface-variant gap-2">
+                  <span className="material-symbols-outlined text-[32px] text-outline">inbox</span>
+                  <span>No files queued. Drop PDFs above to begin.</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {fileStack.map((file, idx) => (
+                    <div key={idx} className="bg-surface-container-low rounded-lg p-2.5 px-3 flex items-center justify-between text-xs shadow-sm">
+                      <div className="flex items-center gap-3 truncate">
+                        <div className="w-8 h-8 rounded bg-primary-fixed/30 text-primary flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-[18px]">{file.icon}</span>
+                        </div>
+                        <div className="truncate">
+                          <div className="font-semibold text-on-surface truncate">{file.name}</div>
+                          <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-0.5">
+                            <span>{file.size}</span><span>•</span>
+                            <span className="text-secondary font-medium">{file.status}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => setFileStack(prev => prev.filter((_, i) => i !== idx))}
+                        className="p-1 hover:bg-surface-container rounded text-outline hover:text-error">
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-          <button
-            onClick={handleProcessDossier}
-            disabled={isProcessing || fileStack.length === 0}
-            className="w-full bg-primary hover:bg-primary-container text-white py-3 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className={`material-symbols-outlined text-[18px] ${isProcessing ? 'animate-spin' : ''}`}>
-              {isProcessing ? 'sync' : 'bolt'}
-            </span>
-            <span>{isProcessing ? 'Transmitting to AI Pipeline...' : `Process Dossier (${fileStack.length} Document${fileStack.length !== 1 ? 's' : ''})`}</span>
-          </button>
+              <button
+                onClick={handleProcessDossier}
+                disabled={fileStack.length === 0}
+                className="w-full bg-primary hover:bg-primary-container text-white py-3 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
+              >
+                <span className="material-symbols-outlined text-[18px]">bolt</span>
+                <span>Process Dossier ({fileStack.length} Document{fileStack.length !== 1 ? 's' : ''})</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
