@@ -41,7 +41,8 @@ import re
 import time
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
-from typing import Optional
+from typing import Optional, Any
+from pydantic import create_model, Field
 
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
@@ -144,109 +145,43 @@ ENTITY_SCHEMAS: dict[str, list[str]] = {
     ],
 }
 
-# Gemini fallback prompts -- one per doc type
-EXTRACTION_PROMPTS: dict[str, str] = {
-    "commercial_invoice": """You are extracting fields from a Commercial Invoice.
-Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
-Do not include markdown, explanation, or surrounding text.
-Do NOT normalize: preserve the exact raw value as printed (e.g. "FOB Colombo", "450.00 KG", "60 Days from B/L Date").
-{
-  "INVOICE_NUMBER": null,
-  "INVOICE_DATE": null,
-  "CONSIGNEE_NAME": null,
-  "CONSIGNEE_ADDRESS": null,
-  "SHIPPER_NAME": null,
-  "INCOTERM": null,
-  "PAYMENT_TERMS": null,
-  "TOTAL_AMOUNT": null,
-  "CURRENCY": null,
-  "GROSS_WEIGHT": null,
-  "NET_WEIGHT": null,
-  "PACKAGE_COUNT": null
-}""",
-
-    "packing_list": """You are extracting fields from a Packing List.
-Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
-Do not include markdown, explanation, or surrounding text.
-Preserve raw values exactly as printed (e.g. "797.00 KG", "14.500 CBM", "240 Ctns").
-{
-  "GROSS_WEIGHT": null,
-  "NET_WEIGHT": null,
-  "TARE_WEIGHT": null,
-  "PACKAGE_COUNT": null,
-  "VOLUME": null,
-  "SHIPPING_MARKS": null
-}""",
-
-    "awb": """You are extracting fields from an Air Waybill (AWB).
-Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
-Do not include markdown, explanation, or surrounding text.
-Preserve raw values exactly as printed.
-{
-  "AWB_NUMBER": null,
-  "FLIGHT_NUMBER": null,
-  "ORIGIN": null,
-  "DESTINATION": null,
-  "GROSS_WEIGHT": null,
-  "PACKAGE_COUNT": null,
-  "SHIPPER_NAME": null,
-  "CONSIGNEE_NAME": null
-}""",
-
-    "bl": """You are extracting fields from a Bill of Lading.
-Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
-Do not include markdown, explanation, or surrounding text.
-Preserve raw values exactly as printed.
-{
-  "BL_NUMBER": null,
-  "VESSEL_NAME": null,
-  "PORT_LOADING": null,
-  "PORT_DISCHARGE": null,
-  "GROSS_WEIGHT": null,
-  "PACKAGE_COUNT": null,
-  "CONTAINER_NUMBER": null
-}""",
-
-    "freight_invoice": """You are extracting fields from a Freight Invoice.
-Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
-Do not include markdown, explanation, or surrounding text.
-{
-  "INVOICE_NUMBER": null,
-  "INVOICE_DATE": null,
-  "CONSIGNEE_NAME": null,
-  "SHIPPER_NAME": null,
-  "TOTAL_AMOUNT": null,
-  "CURRENCY": null,
-  "BL_NUMBER": null,
-  "CONTAINER_NUMBER": null
-}""",
-
-    "delivery_order": """You are extracting fields from a Delivery Order.
-Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
-Do not include markdown, explanation, or surrounding text.
-{
-  "DO_NUMBER": null,
-  "CONSIGNEE_NAME": null,
-  "CONTAINER_NUMBER": null,
-  "GROSS_WEIGHT": null,
-  "PACKAGE_COUNT": null,
-  "PORT_DISCHARGE": null
-}""",
-
-    "letter_of_credit": """You are extracting fields from a Letter of Credit.
-Return ONLY valid JSON with exactly these keys. Use null for any field not visible.
-Do not include markdown, explanation, or surrounding text.
-{
-  "LC_NUMBER": null,
-  "ISSUING_BANK": null,
-  "BENEFICIARY": null,
-  "CONSIGNEE_NAME": null,
-  "TOTAL_AMOUNT": null,
-  "CURRENCY": null,
-  "INCOTERM": null,
-  "EXPIRY_DATE": null
-}""",
+FIELD_DEFINITIONS = {
+    "INVOICE_NUMBER": {"type": str, "desc": "The unique commercial invoice number."},
+    "INVOICE_DATE": {"type": str, "desc": "The date the invoice was issued."},
+    "CONSIGNEE_NAME": {"type": str, "desc": "Name of the buyer or consignee."},
+    "CONSIGNEE_ADDRESS": {"type": str, "desc": "Full address of the consignee."},
+    "SHIPPER_NAME": {"type": str, "desc": "Name of the seller, exporter, or shipper."},
+    "INCOTERM": {"type": str, "desc": "Incoterm (e.g., CIF, FOB, EXW)."},
+    "PAYMENT_TERMS": {"type": str, "desc": "Payment terms (e.g., LC AT SIGHT, 30 Days)."},
+    "TOTAL_AMOUNT": {"type": float, "desc": "Total invoice or declared amount (numeric only)."},
+    "CURRENCY": {"type": str, "desc": "3-letter currency code (e.g., USD, EUR, LKR)."},
+    "GROSS_WEIGHT": {"type": float, "desc": "Total gross weight (numeric only)."},
+    "NET_WEIGHT": {"type": float, "desc": "Total net weight (numeric only). DO NOT extract bank account numbers."},
+    "TARE_WEIGHT": {"type": float, "desc": "Tare weight of containers/packaging (numeric only)."},
+    "PACKAGE_COUNT": {"type": float, "desc": "Total number of packages/cartons/rolls (numeric only)."},
+    "HS_CODE": {"type": str, "desc": "Harmonized System (HS) code. Usually 6 to 10 digits."},
+    "COUNTRY_OF_ORIGIN": {"type": str, "desc": "Country of origin where goods were manufactured."},
+    "PORT_LOADING": {"type": str, "desc": "Port or airport of departure/loading (e.g., AHMEDABAD)."},
+    "PORT_DISCHARGE": {"type": str, "desc": "Port or airport of arrival/destination (e.g., COLOMBO)."},
+    "VESSEL_NAME": {"type": str, "desc": "Vessel name or Flight number (e.g., 6E1171)."},
+    "FREIGHT_AMOUNT": {"type": float, "desc": "Cost of freight (numeric only)."},
+    "INSURANCE_AMOUNT": {"type": float, "desc": "Cost of insurance (numeric only)."},
+    "SHIPPING_MARKS": {"type": str, "desc": "Marks and numbers printed on packages or customer references."},
+    "AWB_NUMBER": {"type": str, "desc": "11-digit Air Waybill number. Exclude text headers like 'HAWB NO'."},
+    "FLIGHT_NUMBER": {"type": str, "desc": "Flight number."},
+    "ORIGIN": {"type": str, "desc": "Airport of origin."},
+    "DESTINATION": {"type": str, "desc": "Airport of destination."},
+    "BL_NUMBER": {"type": str, "desc": "Bill of Lading number."},
+    "CONTAINER_NUMBER": {"type": str, "desc": "Shipping container number."},
+    "VOLUME": {"type": float, "desc": "Total volume in CBM (numeric only)."},
+    "DO_NUMBER": {"type": str, "desc": "Delivery Order number."},
+    "LC_NUMBER": {"type": str, "desc": "Letter of Credit (L/C) number."},
+    "ISSUING_BANK": {"type": str, "desc": "Name of the issuing bank for the LC."},
+    "BENEFICIARY": {"type": str, "desc": "Name of the beneficiary."},
+    "EXPIRY_DATE": {"type": str, "desc": "Expiry date of the document or LC."},
 }
+
+# (Replaced old EXTRACTION_PROMPTS dict)
 
 # Default fallback bbox when no OCR token matches
 _DEFAULT_BBOX = [0, 0, 0, 0]
@@ -255,7 +190,7 @@ _DEFAULT_BBOX = [0, 0, 0, 0]
 _MIN_OCR_CONFIDENCE = 0.60
 
 # Minimum local extraction confidence to skip Gemini
-_LOCAL_CONFIDENCE_GATE = 0.72
+_LOCAL_CONFIDENCE_GATE = 0.85
 
 
 # ---------------------------------------------------------------------------
@@ -626,8 +561,7 @@ class LocalExtractor:
 
 class GeminiFallback:
     """
-    Calls Gemini Vision API for fields that local extraction could not find.
-    Groups all missing fields into one prompt per page (one API call per page).
+    Calls Gemini Vision API using Pydantic Structured Outputs.
     """
 
     def __init__(self, model):
@@ -639,35 +573,37 @@ class GeminiFallback:
         doc_type: str,
         page_image,
     ) -> dict[str, str]:
-        """
-        Ask Gemini for only the missing fields.
-        Returns dict: entity_type -> raw value string (or empty if not found).
-        """
         if not missing_fields or self._model is None or page_image is None:
             return {}
 
-        base_prompt = EXTRACTION_PROMPTS.get(doc_type, "")
-        if not base_prompt:
-            logger.warning(f"No Gemini prompt for doc_type='{doc_type}'")
-            return {}
+        import google.generativeai as genai
 
-        # Build a focused prompt listing only the missing keys
-        focused_keys = {k: "null" for k in missing_fields}
+        # Dynamically build Pydantic schema for ONLY the missing fields
+        schema_fields = {}
+        for f in missing_fields:
+            field_meta = FIELD_DEFINITIONS.get(f, {"type": str, "desc": ""})
+            schema_fields[f] = (Optional[field_meta["type"]], Field(default=None, description=field_meta["desc"]))
+
+        DynamicSchema = create_model(f"{doc_type.capitalize()}Schema", **schema_fields)
+
         prompt = (
-            f"{base_prompt.split('{')[0]}"   # take the preamble before the JSON
-            f"Return ONLY this JSON, nothing else:\n"
-            + json.dumps(focused_keys, indent=2)
+            f"Extract the requested missing fields from this {doc_type}. "
+            f"Return ONLY valid JSON according to the schema. "
+            f"If a field is not visibly present in the document, return null."
         )
 
         try:
-            response = self._model.generate_content([prompt, page_image])
-            raw = _strip_fences(response.text)
-            data: dict = json.loads(raw)
-        except json.JSONDecodeError as e:
-            logger.error(f"Gemini non-JSON response: {e}. Raw: {response.text[:200]!r}")
-            return {}
+            response = self._model.generate_content(
+                [prompt, page_image],
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json",
+                    response_schema=DynamicSchema,
+                    temperature=0.0
+                )
+            )
+            data: dict = json.loads(response.text)
         except Exception as e:
-            logger.error(f"Gemini API call failed: {e}")
+            logger.error(f"Gemini API structured extraction failed: {e}")
             return {}
 
         results = {}
@@ -713,8 +649,8 @@ class EntityExtractor:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=api_key)
-                self._model = genai.GenerativeModel("gemini-2.0-flash")
-                logger.info("EntityExtractor: Gemini fallback initialised (gemini-2.0-flash)")
+                self._model = genai.GenerativeModel("gemini-1.5-pro")
+                logger.info("EntityExtractor: Gemini fallback initialised (gemini-1.5-pro)")
             except Exception as e:
                 logger.error(f"Gemini init failed: {e}")
                 self._model = None
