@@ -39,3 +39,5 @@ frontend/.env
 2_Aloka/
 3_Kaveen/
 Docs/
+# Uploads
+backend/uploads/
