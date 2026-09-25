@@ -94,8 +94,8 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
         await new Promise(resolve => setTimeout(resolve, 3000));
         
         try {
-          const { getShipmentStatus } = await import('../../utils/api');
-          const statusRes = await getShipmentStatus(response.shipment_id);
+          const { api } = await import('../../utils/api');
+          const { data: statusRes } = await api.get(`/upload/${response.shipment_id}/status`);
           
           if (statusRes.status === 'completed' || (statusRes.status as string) === 'done') {
             isDone = true;
