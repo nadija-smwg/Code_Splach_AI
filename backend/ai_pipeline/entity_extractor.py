@@ -195,7 +195,7 @@ _DEFAULT_BBOX = [0, 0, 0, 0]
 _MIN_OCR_CONFIDENCE = 0.60
 
 # Minimum local extraction confidence to skip Gemini
-_LOCAL_CONFIDENCE_GATE = 1.10
+_LOCAL_CONFIDENCE_GATE = 0.70
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +296,11 @@ def _strip_fences(text: str) -> str:
 
 
 def _is_null(v) -> bool:
-    return v is None or str(v).lower().strip() in ("null", "none", "n/a", "", "na")
+    if v is None:
+        return True
+    if isinstance(v, (int, float)) and v == 0:
+        return True
+    return str(v).lower().strip() in ("null", "none", "n/a", "", "na", "0", "0.0", "0.00")
 
 
 # ---------------------------------------------------------------------------
@@ -652,8 +656,9 @@ class EntityExtractor:
         else:
             try:
                 genai.configure(api_key=api_key)
-                self._model = genai.GenerativeModel("gemini-2.5-pro")
-                logger.info("EntityExtractor: Gemini fallback initialised (gemini-2.5-pro)")
+                model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+                self._model = genai.GenerativeModel(model_name)
+                logger.info(f"EntityExtractor: Gemini fallback initialised ({model_name})")
             except Exception as e:
                 logger.error(f"Gemini init failed: {e}")
                 self._model = None
