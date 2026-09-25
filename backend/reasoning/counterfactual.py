@@ -90,7 +90,7 @@ class CounterfactualGenerator:
             "Invoice number must be identical across all referencing documents. "
             "Check for typos, prefix differences, or leading zeros."
         ),
-        "CURRENCY": (
+        "CURRENCY_CODE": (
             "Currency must be consistent across all documents. "
             "USD is standard for Sri Lankan apparel exports to US/EU markets."
         ),

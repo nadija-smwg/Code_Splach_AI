@@ -207,7 +207,7 @@ if "INCOTERM" in ci_result and "FOB" in ci_result["INCOTERM"][0]:
 else:
     fail("INCOTERM not found or wrong")
 
-if "CURRENCY" in ci_result and "USD" in ci_result["CURRENCY"][0]:
+if "CURRENCY_CODE" in ci_result and "USD" in ci_result["CURRENCY_CODE"][0]:
     ok("CURRENCY extracted correctly")
 else:
     fail("CURRENCY not found")
@@ -419,7 +419,7 @@ for e in ci_result.entities:
             ok(f"GROSS_WEIGHT raw value preserved: {e.value!r}")
         else:
             fail(f"GROSS_WEIGHT value modified: {e.value!r}")
-    if e.entity_type in ("INVOICE_NUMBER", "CURRENCY", "INCOTERM"):
+    if e.entity_type in ("INVOICE_NUMBER", "CURRENCY_CODE", "INCOTERM"):
         if e.normalized_value is not None:
             fail(f"Phase 06 must NOT set normalized_value (found on {e.entity_type})")
 ok("normalized_value is None on all entities (Phase 09 responsibility)")

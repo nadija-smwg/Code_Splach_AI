@@ -214,15 +214,15 @@ class TestIncoterms:
 class TestCurrency:
 
     def test_usd_lowercase(self, normalizer):
-        r = normalizer.normalize("CURRENCY", "usd")
+        r = normalizer.normalize("CURRENCY_CODE", "usd")
         assert r["normalized_value"] == "USD"
 
     def test_us_dollar_phrase(self, normalizer):
-        r = normalizer.normalize("CURRENCY", "US Dollar")
+        r = normalizer.normalize("CURRENCY_CODE", "US Dollar")
         assert r["normalized_value"] == "USD"
 
     def test_lkr(self, normalizer):
-        r = normalizer.normalize("CURRENCY", "Sri Lankan Rupee")
+        r = normalizer.normalize("CURRENCY_CODE", "Sri Lankan Rupee")
         assert r["normalized_value"] == "LKR"
 
 

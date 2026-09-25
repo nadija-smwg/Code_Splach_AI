@@ -278,7 +278,7 @@ else:
     fail("Unknown conflict type: returned no options")
 
 # No sources at all
-disc_empty = {"field": "CURRENCY", "conflict_type": "numeric_variance", "sources": []}
+disc_empty = {"field": "CURRENCY_CODE", "conflict_type": "numeric_variance", "sources": []}
 result_empty = gen.generate(disc_empty)
 if result_empty["options"]:
     ok("Empty sources: fallback option returned, no crash")
