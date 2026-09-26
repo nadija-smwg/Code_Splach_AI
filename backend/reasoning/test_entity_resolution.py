@@ -41,3 +41,21 @@ def test_missing_field_in_a_document_is_not_a_conflict():
     total = next(item for item in fields if item["entity_type"] == "TOTAL_AMOUNT")
     assert total["status"] == "pending"
     assert not total["assertions"][0]["is_outlier"]
+
+
+def test_role_excluded_consignee_is_not_resolved_or_flagged():
+    fields = resolve_documents("shipment-1", [
+        _document("invoice", "commercial_invoice", [
+            {**_entity("CONSIGNEE_NAME", "MARTEK M F G (PVT) LTD", "MARTEK M F G (PVT) LTD", None),
+             "party_role": "consignee", "resolver_eligible": True},
+        ]),
+        _document("awb", "awb", [
+            {**_entity("CONSIGNEE_NAME", "MSA AIR PVT LTD", "MSA AIR PVT LTD", None),
+             "party_role": "carrier", "resolver_eligible": False},
+        ]),
+    ])
+
+    field = next(item for item in fields if item["entity_type"] == "CONSIGNEE_NAME")
+    assert field["status"] == "pending"
+    assert field["consensus_value"] == "MARTEK M F G (PVT) LTD"
+    assert len(field["assertions"]) == 1
