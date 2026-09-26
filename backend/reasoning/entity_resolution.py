@@ -10,10 +10,13 @@ import re
 from typing import Any
 
 
-COMPARABLE_FIELDS = {
-    "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT", "CONSIGNEE_NAME",
-    "SHIPPER_NAME", "INCOTERM", "COUNTRY_OF_ORIGIN", "PORT_OF_LOADING",
-    "PORT_OF_DISCHARGE", "TOTAL_AMOUNT", "CURRENCY_CODE",
+# These are the extracted values used by generate_cusdec_xml().  The resolver
+# deliberately excludes operational/display-only fields from reconciliation so
+# the graph and review workspace focus on declaration readiness.
+CUSDEC_FIELDS = {
+    "CONSIGNEE_NAME", "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT",
+    "AWB_NUMBER", "BL_NUMBER", "INCOTERM", "TOTAL_AMOUNT",
+    "INVOICE_NUMBER", "CURRENCY_CODE",
 }
 
 FIELD_LABELS = {
@@ -79,7 +82,7 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
         doc_type = str(document.get("document_type", "unknown"))
         for index, entity in enumerate(document.get("entities", [])):
             entity_type = entity.get("entity_type")
-            if not entity_type:
+            if not entity_type or entity_type not in CUSDEC_FIELDS:
                 continue
             canonical_id = f"shipment:{shipment_id}:field:{entity_type}"
             assertion_id = f"assertion:{doc_id}:{entity_type}:{index}"
@@ -101,17 +104,18 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
 
     resolved: list[dict[str, Any]] = []
     for entity_type, assertions in grouped.items():
-        comparable = entity_type in COMPARABLE_FIELDS
         consensus, consensus_ids = _choose_consensus(assertions)
         units = {str(a["unit"]).lower() for a in assertions if a.get("unit")}
-        status = "pending"
-        if comparable and len(assertions) == 1:
+        # A document may legitimately omit a field (for example, an AWB has no
+        # invoice total). Absence is never represented as an assertion, so it
+        # can never become a discrepancy. A single supplied value is simply
+        # pending corroboration rather than a warning or conflict.
+        status = "pending" if len(assertions) == 1 else (
+            "match" if len(consensus_ids) == len(assertions) else "conflict"
+        )
+        # Equal numbers with different non-empty units need human review.
+        if status == "match" and len(units) > 1:
             status = "warning"
-        elif comparable:
-            status = "match" if len(consensus_ids) == len(assertions) else "conflict"
-            # Equal numbers with different non-empty units need human review.
-            if status == "match" and len(units) > 1:
-                status = "warning"
 
         for assertion in assertions:
             is_consensus = assertion["assertion_id"] in consensus_ids

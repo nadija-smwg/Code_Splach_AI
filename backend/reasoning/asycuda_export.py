@@ -39,6 +39,7 @@ def generate_cusdec_xml(graph: nx.Graph, shipment_id: str) -> str:
     bl_number    = _get_entity_value(graph, "BL_NUMBER", "")
     incoterm     = _get_entity_value(graph, "INCOTERM", "FOB")
     total_amount = _get_entity_value(graph, "TOTAL_AMOUNT", "0.00")
+    currency     = _get_entity_value(graph, "CURRENCY_CODE", "USD")
     invoice_num  = _get_entity_value(graph, "INVOICE_NUMBER", "N/A")
 
     # Strip numeric part from weight strings like "450.00 KG" or "448.5"
@@ -82,7 +83,7 @@ def generate_cusdec_xml(graph: nx.Graph, shipment_id: str) -> str:
     # Valuation
     valuation = ET.SubElement(root, "Valuation")
     ET.SubElement(valuation, "Incoterm").text = incoterm
-    ET.SubElement(valuation, "TotalInvoiceValue", attrib={"currency": "USD"}).text = extract_num(total_amount)
+    ET.SubElement(valuation, "TotalInvoiceValue", attrib={"currency": currency}).text = extract_num(total_amount)
 
     # Serialize to string with XML declaration
     ET.indent(root, space="  ")

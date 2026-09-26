@@ -31,3 +31,13 @@ def test_punctuation_only_name_difference_is_a_match():
     ])
     field = next(item for item in fields if item["entity_type"] == "CONSIGNEE_NAME")
     assert field["status"] == "match"
+
+
+def test_missing_field_in_a_document_is_not_a_conflict():
+    fields = resolve_documents("shipment-1", [
+        _document("invoice", "commercial_invoice", [_entity("TOTAL_AMOUNT", "45,230.00 USD", 45230.0, "USD")]),
+        _document("awb", "awb", [_entity("AWB_NUMBER", "631-12345678", "631-12345678", None)]),
+    ])
+    total = next(item for item in fields if item["entity_type"] == "TOTAL_AMOUNT")
+    assert total["status"] == "pending"
+    assert not total["assertions"][0]["is_outlier"]
