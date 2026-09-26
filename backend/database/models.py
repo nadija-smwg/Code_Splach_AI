@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
@@ -119,4 +119,54 @@ class DossierDocument(Base):
     extraction_json = Column(JSONB)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class FieldResolution(Base):
+    """A reviewer-approved override for one canonical shipment field."""
+    __tablename__ = 'field_resolutions'
+    __table_args__ = (UniqueConstraint('shipment_id', 'canonical_field_id', name='uq_field_resolution'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shipment_id = Column(String(100), nullable=False)
+    canonical_field_id = Column(String(255), nullable=False)
+    entity_type = Column(String(50), nullable=False)
+    resolved_value = Column(JSONB, nullable=False)
+    source_assertion_id = Column(String(255))
+    reason = Column(Text)
+    resolved_by = Column(String(100), nullable=False, default='reviewer')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class DeclarationMetadata(Base):
+    """Reviewer-entered declaration details required in addition to source documents."""
+    __tablename__ = 'declaration_metadata'
+    __table_args__ = (UniqueConstraint('shipment_id', 'field_name', name='uq_declaration_metadata'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shipment_id = Column(String(100), nullable=False)
+    field_name = Column(String(50), nullable=False)
+    value = Column(Text, nullable=False)
+    updated_by = Column(String(100), nullable=False, default='reviewer')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class CusdecLineItem(Base):
+    """A reviewer-entered goods row with its document reference retained."""
+    __tablename__ = 'cusdec_line_items'
+    __table_args__ = (UniqueConstraint('shipment_id', 'row_index', name='uq_cusdec_line_item'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shipment_id = Column(String(100), nullable=False)
+    row_index = Column(Integer, nullable=False)
+    description = Column(Text, nullable=False)
+    quantity = Column(Float, nullable=False)
+    unit = Column(String(50), nullable=False)
+    unit_price = Column(Float, nullable=False)
+    total_price = Column(Float, nullable=False)
+    source_reference = Column(Text, nullable=False)
+    verified_by = Column(String(100), nullable=False, default='reviewer')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

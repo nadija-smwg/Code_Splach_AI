@@ -136,6 +136,86 @@ def _get_documents_for_shipment(shipment_id: str) -> list:
     return real if real is not None else []
 
 
+def _get_field_resolutions(shipment_id: str) -> dict:
+    """Load reviewer decisions keyed by canonical field ID."""
+    try:
+        from database.connection import SessionLocal
+        from database.models import FieldResolution
+
+        db = SessionLocal()
+        try:
+            rows = db.query(FieldResolution).filter(FieldResolution.shipment_id == shipment_id).all()
+            return {
+                row.canonical_field_id: {
+                    "resolved_value": row.resolved_value,
+                    "source_assertion_id": row.source_assertion_id,
+                    "reason": row.reason,
+                    "resolved_by": row.resolved_by,
+                }
+                for row in rows
+            }
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("Could not load field resolutions for %s: %s", shipment_id, exc)
+        return {}
+
+
+def _get_declaration_metadata(shipment_id: str) -> dict:
+    """Load reviewer-supplied Customs/profile details for the active dossier."""
+    try:
+        from database.connection import SessionLocal
+        from database.models import DeclarationMetadata
+
+        db = SessionLocal()
+        try:
+            rows = db.query(DeclarationMetadata).filter(
+                DeclarationMetadata.shipment_id == shipment_id
+            ).all()
+            return {row.field_name: row.value for row in rows if row.value not in (None, "")}
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("Could not load declaration metadata for %s: %s", shipment_id, exc)
+        return {}
+
+
+def _get_verified_line_items(shipment_id: str) -> list[dict]:
+    """Load reviewer-entered goods rows and their source references."""
+    try:
+        from database.connection import SessionLocal
+        from database.models import CusdecLineItem
+
+        db = SessionLocal()
+        try:
+            rows = db.query(CusdecLineItem).filter(
+                CusdecLineItem.shipment_id == shipment_id
+            ).order_by(CusdecLineItem.row_index).all()
+            return [{
+                "row_index": row.row_index,
+                "description": row.description,
+                "quantity": row.quantity,
+                "unit": row.unit,
+                "unit_price": row.unit_price,
+                "total_price": row.total_price,
+                "source_reference": row.source_reference,
+                "verified_by": row.verified_by,
+            } for row in rows]
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("Could not load verified line items for %s: %s", shipment_id, exc)
+        return []
+
+
+def _resolve_shipment_fields(shipment_id: str, documents: list) -> list:
+    """Resolve source assertions, then apply persisted reviewer decisions."""
+    from reasoning.entity_resolution import apply_manual_resolutions, resolve_documents
+
+    fields = resolve_documents(shipment_id, documents)
+    return apply_manual_resolutions(fields, _get_field_resolutions(shipment_id))
+
+
 # ══════════════════════════════════════════════════════════════════
 # HELPERS — Knowledge Graph Building
 # ══════════════════════════════════════════════════════════════════
@@ -149,7 +229,6 @@ def _build_graph_from_documents(shipment_id: str, documents: list):
     Returns (KnowledgeBuilder, documents).
     """
     from reasoning.knowledge_builder import KnowledgeBuilder
-    from reasoning.entity_resolution import resolve_documents
 
     kb = KnowledgeBuilder()
     kb.add_shipment_node(shipment_id)
@@ -157,7 +236,7 @@ def _build_graph_from_documents(shipment_id: str, documents: list):
     for doc in documents:
         kb.add_document_node(doc["document_id"], doc.get("document_type", "unknown"))
 
-    for field in resolve_documents(shipment_id, documents):
+    for field in _resolve_shipment_fields(shipment_id, documents):
         kb.add_canonical_field_node(field, shipment_id)
         for assertion in field["assertions"]:
             kb.add_source_assertion_node(assertion)
@@ -350,15 +429,216 @@ async def get_knowledge_graph(shipment_id: str):
 @router.get("/shipments/{shipment_id}/key-fields")
 async def get_key_fields(shipment_id: str):
     """Return canonical shipment fields with every document assertion."""
-    from reasoning.entity_resolution import resolve_documents
-
-    fields = resolve_documents(shipment_id, _get_documents_for_shipment(shipment_id))
+    fields = _resolve_shipment_fields(shipment_id, _get_documents_for_shipment(shipment_id))
     counts = {status: sum(field["status"] == status for field in fields)
-              for status in ("match", "conflict", "warning", "pending")}
+              for status in ("match", "conflict", "warning", "pending", "resolved")}
     return {
         "shipment_id": shipment_id,
         "summary": {"total_fields": len(fields), **counts},
         "fields": fields,
+    }
+
+
+@router.post("/shipments/{shipment_id}/field-resolutions")
+async def save_field_resolution(shipment_id: str, resolution: dict):
+    """Persist a reviewer-selected source value or a verified manual value."""
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
+
+    canonical_field_id = str(resolution.get("canonical_field_id", "")).strip()
+    if not canonical_field_id:
+        raise HTTPException(status_code=400, detail="canonical_field_id is required.")
+
+    # Validate against unmodified source evidence. Existing overrides must not
+    # be the sole evidence for a subsequent decision.
+    from reasoning.entity_resolution import resolve_documents
+    source_fields = resolve_documents(shipment_id, documents)
+    field = next((item for item in source_fields if item["canonical_field_id"] == canonical_field_id), None)
+    if field is None:
+        raise HTTPException(status_code=404, detail="The selected canonical field was not found.")
+
+    source_assertion_id = str(resolution.get("source_assertion_id", "")).strip() or None
+    if source_assertion_id:
+        assertion = next(
+            (item for item in field["assertions"] if item["assertion_id"] == source_assertion_id), None
+        )
+        if assertion is None:
+            raise HTTPException(status_code=400, detail="The selected source assertion does not belong to this field.")
+        resolved_value = assertion["normalized_value"]
+    else:
+        manual_value = resolution.get("manual_value")
+        if manual_value in (None, ""):
+            raise HTTPException(status_code=400, detail="Choose a source value or enter a corrected value.")
+        from ai_pipeline.normalizer import EntityNormalizer
+        normalized = EntityNormalizer().normalize(field["entity_type"], str(manual_value))
+        resolved_value = normalized.get("normalized_value")
+        if resolved_value in (None, ""):
+            raise HTTPException(status_code=400, detail="The corrected value could not be validated.")
+
+    reason = str(resolution.get("reason", "")).strip()[:1000] or None
+    try:
+        from database.connection import SessionLocal
+        from database.models import FieldResolution
+
+        db = SessionLocal()
+        try:
+            row = db.query(FieldResolution).filter(
+                FieldResolution.shipment_id == shipment_id,
+                FieldResolution.canonical_field_id == canonical_field_id,
+            ).first()
+            if row is None:
+                row = FieldResolution(
+                    shipment_id=shipment_id,
+                    canonical_field_id=canonical_field_id,
+                    entity_type=field["entity_type"],
+                )
+                db.add(row)
+            row.resolved_value = resolved_value
+            row.source_assertion_id = source_assertion_id
+            row.reason = reason
+            row.resolved_by = "reviewer"
+            db.commit()
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.exception("Could not save field resolution for %s", shipment_id)
+        raise HTTPException(status_code=503, detail="The resolution could not be saved.") from exc
+
+    resolved_fields = _resolve_shipment_fields(shipment_id, documents)
+    saved = next(item for item in resolved_fields if item["canonical_field_id"] == canonical_field_id)
+    return {"status": "resolved", "field": saved}
+
+
+@router.post("/shipments/{shipment_id}/declaration-metadata")
+async def save_declaration_metadata(shipment_id: str, payload: dict):
+    """Save verified Customs/profile fields supplied by the declarant or reviewer."""
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
+
+    from reasoning.cusdec_readiness import PROFILE_REQUIREMENTS, build_cusdec_readiness
+
+    values = payload.get("values")
+    if not isinstance(values, dict):
+        raise HTTPException(status_code=400, detail="values must be an object of declaration fields.")
+
+    invalid = set(values) - set(PROFILE_REQUIREMENTS)
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported declaration field(s): {', '.join(sorted(invalid))}.",
+        )
+
+    cleaned = {
+        key: str(value).strip()
+        for key, value in values.items()
+        if value is not None and str(value).strip()
+    }
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Enter at least one declaration value to save.")
+    if any(len(value) > 200 for value in cleaned.values()):
+        raise HTTPException(status_code=400, detail="Declaration values must be 200 characters or fewer.")
+
+    try:
+        from database.connection import SessionLocal
+        from database.models import DeclarationMetadata
+
+        db = SessionLocal()
+        try:
+            for field_name, value in cleaned.items():
+                row = db.query(DeclarationMetadata).filter(
+                    DeclarationMetadata.shipment_id == shipment_id,
+                    DeclarationMetadata.field_name == field_name,
+                ).first()
+                if row is None:
+                    row = DeclarationMetadata(shipment_id=shipment_id, field_name=field_name)
+                    db.add(row)
+                row.value = value
+                row.updated_by = "reviewer"
+            db.commit()
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.exception("Could not save declaration metadata for %s", shipment_id)
+        raise HTTPException(status_code=503, detail="The declaration details could not be saved.") from exc
+
+    fields = _resolve_shipment_fields(shipment_id, documents)
+    metadata = _get_declaration_metadata(shipment_id)
+    return {
+        "status": "saved",
+        "profile": metadata,
+        "readiness": build_cusdec_readiness(documents, fields, metadata),
+    }
+
+
+@router.post("/shipments/{shipment_id}/cusdec-line-items")
+async def save_cusdec_line_item(shipment_id: str, item: dict):
+    """Save one source-referenced goods row when automatic table extraction is unavailable."""
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
+
+    description = str(item.get("description", "")).strip()
+    unit = str(item.get("unit", "")).strip()
+    source_reference = str(item.get("source_reference", "")).strip()
+    if not description or not unit or not source_reference:
+        raise HTTPException(
+            status_code=400,
+            detail="Description, unit, and source document reference are required.",
+        )
+    if len(description) > 1000 or len(unit) > 50 or len(source_reference) > 500:
+        raise HTTPException(status_code=400, detail="One or more line-item values are too long.")
+    try:
+        quantity = float(item.get("quantity"))
+        unit_price = float(item.get("unit_price"))
+        total_price = float(item.get("total_price"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Quantity, unit price, and total price must be numbers.")
+    if quantity <= 0 or unit_price < 0 or total_price <= 0:
+        raise HTTPException(status_code=400, detail="Quantity and total price must be positive; unit price cannot be negative.")
+    if abs(quantity * unit_price - total_price) > max(total_price * 0.02, 0.01):
+        raise HTTPException(status_code=400, detail="Total price must match quantity × unit price within 2%.")
+
+    try:
+        from database.connection import SessionLocal
+        from database.models import CusdecLineItem
+
+        db = SessionLocal()
+        try:
+            last_row = db.query(CusdecLineItem.row_index).filter(
+                CusdecLineItem.shipment_id == shipment_id
+            ).order_by(CusdecLineItem.row_index.desc()).first()
+            row = CusdecLineItem(
+                shipment_id=shipment_id,
+                row_index=(last_row[0] if last_row else 0) + 1,
+                description=description,
+                quantity=quantity,
+                unit=unit,
+                unit_price=unit_price,
+                total_price=total_price,
+                source_reference=source_reference,
+                verified_by="reviewer",
+            )
+            db.add(row)
+            db.commit()
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.exception("Could not save CUSDEC line item for %s", shipment_id)
+        raise HTTPException(status_code=503, detail="The goods line item could not be saved.") from exc
+
+    from reasoning.cusdec_readiness import build_cusdec_readiness
+    fields = _resolve_shipment_fields(shipment_id, documents)
+    return {
+        "status": "saved",
+        "line_items": _get_verified_line_items(shipment_id),
+        "readiness": build_cusdec_readiness(
+            documents,
+            fields,
+            _get_declaration_metadata(shipment_id),
+            _get_verified_line_items(shipment_id),
+        ),
     }
 
 
@@ -434,21 +714,66 @@ async def get_audit_trail(shipment_id: str):
 
 @router.get("/shipments/{shipment_id}/asycuda-export")
 async def export_asycuda(shipment_id: str):
-    from reasoning.asycuda_export import generate_cusdec_xml
+    """Export only a declaration that passed the CUSDEC readiness gate.
 
-    try:
-        kb, _ = _get_graph_for_shipment(shipment_id)
-        xml = generate_cusdec_xml(kb.get_graph(), shipment_id)
-    except Exception as e:
-        logger.warning("ASYCUDA export failed, falling back to demo: %s", e)
-        from reasoning.asycuda_export import generate_demo_cusdec_xml
-        xml = generate_demo_cusdec_xml(shipment_id)
+    A valid HTTP response must never contain fabricated declaration data.  The
+    official ASYCUDA serializer is deliberately not enabled until its message
+    schema is configured and validated.
+    """
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
 
+    from reasoning.cusdec_readiness import build_cusdec_readiness
+
+    readiness = build_cusdec_readiness(
+        documents,
+        _resolve_shipment_fields(shipment_id, documents),
+        _get_declaration_metadata(shipment_id),
+        _get_verified_line_items(shipment_id),
+    )
+    if not readiness["export_allowed"]:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "CUSDEC export is blocked until all readiness checks pass.",
+                "readiness": readiness,
+            },
+        )
+
+    from reasoning.cusdec_xml import generate_cusdec_xml
+
+    xml = generate_cusdec_xml(
+        _resolve_shipment_fields(shipment_id, documents),
+        _get_declaration_metadata(shipment_id),
+        _get_verified_line_items(shipment_id),
+    )
     return Response(
         content=xml,
         media_type="application/xml",
-        headers={"Content-Disposition": f"attachment; filename=CUSDEC_{shipment_id[:8]}.xml"},
+        headers={"Content-Disposition": f'attachment; filename="CUSDEC_{shipment_id[:8]}.xml"'},
     )
+
+
+@router.get("/shipments/{shipment_id}/cusdec-readiness")
+async def get_cusdec_readiness(shipment_id: str):
+    """Return field-level blockers before the user attempts an export."""
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
+
+    from reasoning.cusdec_readiness import build_cusdec_readiness
+
+    fields = _resolve_shipment_fields(shipment_id, documents)
+    return {
+        "shipment_id": shipment_id,
+        **build_cusdec_readiness(
+            documents,
+            fields,
+            _get_declaration_metadata(shipment_id),
+            _get_verified_line_items(shipment_id),
+        ),
+    }
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -543,5 +868,9 @@ async def get_active_rules():
 
 @router.post('/shipments/{shipment_id}/discrepancies/{discrepancy_id}/resolve')
 async def resolve_discrepancy(shipment_id: str, discrepancy_id: str, decision: dict):
-    return {'status': 'resolved'}
+    del shipment_id, discrepancy_id, decision
+    raise HTTPException(
+        status_code=410,
+        detail="Use the field-resolution workflow to select source evidence or enter a corrected value.",
+    )
 

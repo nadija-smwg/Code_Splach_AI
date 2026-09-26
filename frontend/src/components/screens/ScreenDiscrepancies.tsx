@@ -38,7 +38,7 @@ interface ApiDiscrepancy {
   xai_block: XAIBlock;
 }
 
-export function ScreenDiscrepancies({ onTriggerToast }: Props) {
+export function ScreenDiscrepancies(_props: Props) {
   const navigate = useNavigate();
   const { shipmentId } = useShipment();
   const [discrepancies, setDiscrepancies] = useState<ApiDiscrepancy[]>([]);
@@ -46,7 +46,6 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [resolvedItems, setResolvedItems] = useState<Record<string, boolean>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const activeId = shipmentId ?? 'demo-shipment';
@@ -64,9 +63,8 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
       .finally(() => setLoading(false));
   }, [activeId]);
 
-  const handleResolve = (id: string) => {
-    setResolvedItems(prev => ({ ...prev, [id]: true }));
-    onTriggerToast({ title: 'Harmonization Applied', message: `Discrepancy ${id.slice(0, 20)}... synchronized.`, type: 'success' });
+  const handleResolve = () => {
+    navigate('/review-workspace');
   };
 
   const filtered = discrepancies.filter(d => {
@@ -151,7 +149,7 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
               { document_id: '', document_label: xai.layer1.source_documents[1] || 'Source B', document_type: 'unknown', raw_value: item.value_b, normalized_value: item.value_b, page: 1, bbox: [], extraction_confidence: 0 },
             ];
             const isExpanded = expandedId === item.discrepancy_id;
-            const isResolved = resolvedItems[item.discrepancy_id];
+            const isResolved = false;
             return (
               <div key={item.discrepancy_id} className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/20 overflow-hidden border-l-4 border-l-error">
                 {/* Header row */}
@@ -225,10 +223,10 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleResolve(item.discrepancy_id)} disabled={isResolved}
-                        className={`flex-1 py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm text-xs ${isResolved ? 'bg-secondary-container/40 text-secondary cursor-default' : 'bg-primary text-white hover:bg-primary/90'}`}>
-                        <span className="material-symbols-outlined text-[16px]">{isResolved ? 'check_circle' : 'done_all'}</span>
-                        <span>{isResolved ? 'Reviewed' : 'Mark reviewed'}</span>
+                      <button onClick={handleResolve}
+                        className="flex-1 py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm text-xs bg-primary text-white hover:bg-primary/90">
+                        <span className="material-symbols-outlined text-[16px]">rule</span>
+                        <span>Resolve in workspace</span>
                       </button>
                       <button onClick={() => navigate('/knowledge-graph')} className="px-3 py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-variant font-medium text-xs">Graph</button>
                     </div>

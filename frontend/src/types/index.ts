@@ -108,17 +108,51 @@ export interface ResolvedKeyField {
   canonical_field_id: string;
   entity_type: string;
   label: string;
-  status: 'match' | 'conflict' | 'warning' | 'pending';
+  status: 'match' | 'conflict' | 'warning' | 'pending' | 'resolved';
   consensus_value: number | string;
   unit: string | null;
   resolution_confidence: number;
   assertions: FieldAssertion[];
+  resolution?: { source_assertion_id?: string | null; reason?: string | null; resolved_by?: string };
 }
 
 export interface KeyFieldResponse {
   shipment_id: string;
   summary: { total_fields: number; match: number; conflict: number; warning: number; pending: number };
   fields: ResolvedKeyField[];
+}
+
+// ============================================
+// CUSDEC EXPORT READINESS
+// ============================================
+export interface CusdecReadinessBlocker {
+  code: string;
+  field: string;
+  message: string;
+  source: string;
+}
+
+export interface CusdecReadiness {
+  shipment_id: string;
+  status: 'ready' | 'blocked';
+  export_allowed: boolean;
+  blocker_count: number;
+  blockers: CusdecReadinessBlocker[];
+  resolved_field_count: number;
+  required_extracted_field_count: number;
+  profile: Record<string, string>;
+  line_items: CusdecLineItem[];
+  notice: string;
+}
+
+export interface CusdecLineItem {
+  row_index: number;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  total_price: number;
+  source_reference: string;
 }
 
 // ============================================

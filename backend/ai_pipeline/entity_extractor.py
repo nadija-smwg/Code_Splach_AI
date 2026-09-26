@@ -49,6 +49,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 from ai_pipeline.ocr_engine import OcrOutput, OcrToken
 from ai_pipeline.classifier import ClassificationResult
+from ai_pipeline.party_roles import resolve_party_entity
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,8 @@ class ExtractedEntity:
     extraction_confidence: float
     normalized_value: object = None     # Phase 09 fills this
     unit: Optional[str] = None          # Phase 09 fills this
+    party_role: Optional[str] = None    # Role evidenced by the source label
+    resolver_eligible: bool = True      # False values never enter CUSDEC resolution
 
 
 @dataclass
@@ -723,14 +726,24 @@ class EntityExtractor:
         for entity_type, (value, conf, tokens) in local_results.items():
             bbox, ocr_conf = _multi_token_bbox(value, tokens if tokens else all_tokens)
             page = tokens[0].page if tokens else (all_tokens[0].page if all_tokens else 1)
+            effective_type, party_role, resolver_eligible = resolve_party_entity(
+                entity_type, str(value), bbox, page, all_tokens
+            )
+            if effective_type is None:
+                result.warnings.append(
+                    f"Excluded an unlabelled organisation from consignee extraction: {value}"
+                )
+                continue
             result.entities.append(ExtractedEntity(
-                entity_type=entity_type,
+                entity_type=effective_type,
                 value=str(value),            # raw, not normalised
                 page=page,
                 bbox=bbox,
                 extraction_confidence=round(min(conf, 0.97), 4),
                 normalized_value=None,  # Phase 09
                 unit=None,              # Phase 09
+                party_role=party_role,
+                resolver_eligible=resolver_eligible,
             ))
 
         # ── Layer 2: OpenAI fallback for remaining fields ──────────────
@@ -755,15 +768,25 @@ class EntityExtractor:
                     bbox, ocr_conf = _multi_token_bbox(str(value), all_tokens)
                     page = self._value_page(str(value), all_tokens)
                     conf = self._openai_confidence(bbox, ocr_conf)
+                    effective_type, party_role, resolver_eligible = resolve_party_entity(
+                        entity_type, str(value), bbox, page, all_tokens
+                    )
+                    if effective_type is None:
+                        result.warnings.append(
+                            f"Excluded an unlabelled organisation from consignee extraction: {value}"
+                        )
+                        continue
 
                     result.entities.append(ExtractedEntity(
-                        entity_type=entity_type,
+                        entity_type=effective_type,
                         value=str(value),
                         page=page,
                         bbox=bbox,
                         extraction_confidence=round(conf, 4),
                         normalized_value=None,
                         unit=None,
+                        party_role=party_role,
+                        resolver_eligible=resolver_eligible,
                     ))
             else:
                 logger.warning("Could not load page image for OpenAI -- skipping fallback.")
@@ -802,6 +825,8 @@ class EntityExtractor:
                     "page": e.page,
                     "bbox": e.bbox,
                     "extraction_confidence": e.extraction_confidence,
+                    "party_role": e.party_role,
+                    "resolver_eligible": e.resolver_eligible,
                 }
                 for e in result.entities
             ],

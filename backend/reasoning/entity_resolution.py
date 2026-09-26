@@ -7,25 +7,40 @@ graph and review UI to show both consensus and conflicting evidence.
 from __future__ import annotations
 
 import re
+from types import SimpleNamespace
 from typing import Any
 
+from ai_pipeline.party_roles import classify_party_role
 
-# These are the extracted values used by generate_cusdec_xml().  The resolver
-# deliberately excludes operational/display-only fields from reconciliation so
-# the graph and review workspace focus on declaration readiness.
+
+# These are the shipment-level values available to the CUSDEC readiness check.
+# Source assertions stay in the graph, while this set defines which extracted
+# values can influence a declaration draft. Do not silently add display-only
+# fields here: every field in this set must have a declaration purpose.
 CUSDEC_FIELDS = {
-    "CONSIGNEE_NAME", "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT",
-    "AWB_NUMBER", "BL_NUMBER", "INCOTERM", "TOTAL_AMOUNT",
-    "INVOICE_NUMBER", "CURRENCY_CODE",
+    "CONSIGNEE_NAME", "CONSIGNEE_ADDRESS", "SHIPPER_NAME",
+    "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT", "AWB_NUMBER",
+    "BL_NUMBER", "INCOTERM", "TOTAL_AMOUNT", "INVOICE_NUMBER",
+    "CURRENCY_CODE", "PAYMENT_TERMS", "COUNTRY_OF_ORIGIN",
+    "PORT_OF_LOADING", "PORT_OF_DISCHARGE", "VESSEL_NAME",
+    "FLIGHT_NUMBER", "ORIGIN", "DESTINATION", "FREIGHT_AMOUNT",
+    "INSURANCE_AMOUNT", "CONTAINER_NUMBER", "SHIPPING_MARKS", "HS_CODE",
 }
 
 FIELD_LABELS = {
     "GROSS_WEIGHT": "Gross Weight", "NET_WEIGHT": "Net Weight",
     "PACKAGE_COUNT": "Package Count", "CONSIGNEE_NAME": "Consignee Name",
-    "SHIPPER_NAME": "Shipper Name", "INCOTERM": "Incoterm",
+    "CONSIGNEE_ADDRESS": "Consignee Address", "SHIPPER_NAME": "Shipper Name",
+    "INVOICE_NUMBER": "Invoice Number", "PAYMENT_TERMS": "Payment Terms",
+    "AWB_NUMBER": "Air Waybill Number", "BL_NUMBER": "Bill of Lading Number",
+    "HS_CODE": "HS Code", "INCOTERM": "Incoterm",
     "COUNTRY_OF_ORIGIN": "Country of Origin", "PORT_OF_LOADING": "Port of Loading",
     "PORT_OF_DISCHARGE": "Port of Discharge", "TOTAL_AMOUNT": "Total Amount",
-    "CURRENCY_CODE": "Currency",
+    "CURRENCY_CODE": "Currency", "FREIGHT_AMOUNT": "Freight Amount",
+    "INSURANCE_AMOUNT": "Insurance Amount", "VESSEL_NAME": "Vessel Name",
+    "FLIGHT_NUMBER": "Flight Number", "ORIGIN": "Origin",
+    "DESTINATION": "Destination", "CONTAINER_NUMBER": "Container Number",
+    "SHIPPING_MARKS": "Shipping Marks",
 }
 
 
@@ -45,6 +60,25 @@ def _is_number(value: Any) -> bool:
 
 def _same_numeric(left: float, right: float) -> bool:
     return abs(float(left) - float(right)) <= 0.01
+
+
+def _legacy_consignee_role(document: dict[str, Any], entity: dict[str, Any]) -> str | None:
+    """Recover party-role evidence from OCR saved before role metadata existed."""
+    raw_tokens = document.get("raw_ocr") or []
+    if not raw_tokens:
+        return None
+    tokens = [
+        SimpleNamespace(
+            text=str(token.get("text", "")),
+            page=int(token.get("page", 1)),
+            bbox=token.get("bbox", []),
+        )
+        for token in raw_tokens
+        if isinstance(token, dict)
+    ]
+    return classify_party_role(
+        str(entity.get("value", "")), entity.get("bbox", []), int(entity.get("page", 1)), tokens
+    )
 
 
 def _choose_consensus(assertions: list[dict[str, Any]]) -> tuple[Any, list[str]]:
@@ -86,6 +120,21 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
             entity_type = entity.get("entity_type")
             if not entity_type or entity_type not in CUSDEC_FIELDS:
                 continue
+            # New extractions retain carriers, banks, and other organisations
+            # as role-labelled evidence.  They must never be allowed to become
+            # a shipment-level consignee assertion.  The default keeps older
+            # stored dossiers compatible until they are reprocessed.
+            if entity_type == "CONSIGNEE_NAME":
+                if not entity.get("resolver_eligible", True):
+                    continue
+                # Existing dossiers predate party_role/resolver_eligible. Recheck
+                # their persisted OCR before allowing a company into the CUSDEC
+                # consignee field, so a carrier or bank stops creating a false
+                # discrepancy as soon as this version is deployed.
+                if "resolver_eligible" not in entity:
+                    legacy_role = _legacy_consignee_role(document, entity)
+                    if legacy_role and legacy_role != "consignee":
+                        continue
             canonical_id = f"shipment:{shipment_id}:field:{entity_type}"
             assertion_id = f"assertion:{doc_id}:{entity_type}:{index}"
             grouped.setdefault(entity_type, []).append({
@@ -142,3 +191,30 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
             "assertions": assertions,
         })
     return sorted(resolved, key=lambda field: (field["status"] != "conflict", field["label"]))
+
+
+def apply_manual_resolutions(
+    fields: list[dict[str, Any]], resolutions: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Overlay saved reviewer decisions without altering source evidence.
+
+    The underlying assertions remain available for audit. A resolved field is
+    no longer a graph conflict and can progress through the CUSDEC readiness
+    check, subject to all other required declaration checks.
+    """
+    for field in fields:
+        resolution = resolutions.get(field["canonical_field_id"])
+        if not resolution:
+            continue
+        field["consensus_value"] = resolution["resolved_value"]
+        field["status"] = "resolved"
+        field["resolution"] = {
+            "source_assertion_id": resolution.get("source_assertion_id"),
+            "reason": resolution.get("reason"),
+            "resolved_by": resolution.get("resolved_by", "reviewer"),
+        }
+        selected_assertion = resolution.get("source_assertion_id")
+        for assertion in field["assertions"]:
+            assertion["is_consensus"] = assertion["assertion_id"] == selected_assertion if selected_assertion else False
+            assertion["is_outlier"] = False
+    return fields

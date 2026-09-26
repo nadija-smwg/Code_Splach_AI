@@ -2,7 +2,7 @@
 import axios from 'axios';
 import type {
   UploadResponse, ShipmentStatus, DocumentExtraction,
-  GraphData, Discrepancy, AuditEntry, KeyFieldResponse,
+  GraphData, Discrepancy, AuditEntry, KeyFieldResponse, CusdecReadiness,
 } from '../types';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 export const api = axios.create({
@@ -54,6 +54,21 @@ export async function exportAsycuda(id: string): Promise<Blob> {
   });
   return data;
 }
+export async function getCusdecReadiness(id: string): Promise<CusdecReadiness> {
+  const { data } = await api.get<CusdecReadiness>(`/shipments/${id}/cusdec-readiness`);
+  return data;
+}
+export async function saveDeclarationMetadata(id: string, values: Record<string, string>): Promise<CusdecReadiness> {
+  const { data } = await api.post(`/shipments/${id}/declaration-metadata`, { values });
+  return data.readiness;
+}
+export async function saveCusdecLineItem(
+  id: string,
+  item: Omit<import('../types').CusdecLineItem, 'row_index'>,
+): Promise<CusdecReadiness> {
+  const { data } = await api.post(`/shipments/${id}/cusdec-line-items`, item);
+  return data.readiness;
+}
 export function downloadBlob(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -78,7 +93,15 @@ export async function getActiveRules(): Promise<RuleCheck[]> {
   const { data } = await api.get<RuleCheck[]>('/rules/active');
   return data;
 }
-export async function resolveDiscrepancy(shipmentId: string, discrepancyId: string, decision: string): Promise<{ status: string }> {
-  const { data } = await api.post(`/shipments/${shipmentId}/discrepancies/${discrepancyId}/resolve`, { decision });
+export async function saveFieldResolution(
+  shipmentId: string,
+  resolution: {
+    canonical_field_id: string;
+    source_assertion_id?: string;
+    manual_value?: string;
+    reason?: string;
+  },
+): Promise<{ status: string; field: import('../types').ResolvedKeyField }> {
+  const { data } = await api.post(`/shipments/${shipmentId}/field-resolutions`, resolution);
   return data;
 }

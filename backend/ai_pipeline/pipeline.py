@@ -156,6 +156,8 @@ class AIPipeline:
                     "page":                    entity_obj.page,
                     "bbox":                    entity_obj.bbox,
                     "extraction_confidence":   entity_obj.extraction_confidence,
+                    "party_role":              entity_obj.party_role,
+                    "resolver_eligible":       entity_obj.resolver_eligible,
                     "classification_confidence": classification_confidence,
                     "normalization_warning":   False,
                 }
