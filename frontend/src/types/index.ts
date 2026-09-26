@@ -141,7 +141,18 @@ export interface CusdecReadiness {
   resolved_field_count: number;
   required_extracted_field_count: number;
   profile: Record<string, string>;
+  line_items: CusdecLineItem[];
   notice: string;
+}
+
+export interface CusdecLineItem {
+  row_index: number;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  total_price: number;
+  source_reference: string;
 }
 
 // ============================================

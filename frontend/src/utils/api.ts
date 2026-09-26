@@ -62,6 +62,13 @@ export async function saveDeclarationMetadata(id: string, values: Record<string,
   const { data } = await api.post(`/shipments/${id}/declaration-metadata`, { values });
   return data.readiness;
 }
+export async function saveCusdecLineItem(
+  id: string,
+  item: Omit<import('../types').CusdecLineItem, 'row_index'>,
+): Promise<CusdecReadiness> {
+  const { data } = await api.post(`/shipments/${id}/cusdec-line-items`, item);
+  return data.readiness;
+}
 export function downloadBlob(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
