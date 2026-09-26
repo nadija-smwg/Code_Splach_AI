@@ -168,6 +168,20 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
               <div className="py-2.5 text-on-surface-variant italic px-2">No documents extracted.</div>
             )}
           </div>
+          
+          {activeDoc?.warnings && activeDoc.warnings.length > 0 && (
+            <div className="bg-error/10 text-error px-5 py-3.5 border-b border-error/20 flex flex-col gap-1.5 text-sm">
+              <div className="flex items-center gap-2 font-bold">
+                <span className="material-symbols-outlined text-[18px]">warning</span>
+                Extraction Warning
+              </div>
+              <ul className="list-disc list-inside pl-1 text-xs opacity-90">
+                {activeDoc.warnings.map((warn, i) => (
+                  <li key={i}>{warn}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="p-6 bg-surface-container-lowest min-h-[500px]">
             {activeDoc ? (

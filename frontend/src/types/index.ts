@@ -19,6 +19,7 @@ export interface DocumentExtraction {
   document_type: DocumentType;
   classification_confidence: number;
   entities: Entity[];
+  warnings?: string[];
 }
 
 export type DocumentType =

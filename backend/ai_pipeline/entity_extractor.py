@@ -82,6 +82,7 @@ class ExtractionResult:
     classification_confidence: float
     entities: list = field(default_factory=list)   # list[ExtractedEntity]
     raw_ocr: list = field(default_factory=list)    # list[dict] mirroring OcrOutput
+    warnings: list = field(default_factory=list)
 
 
 @dataclass
@@ -580,9 +581,31 @@ class OpenAIFallback:
         missing_fields: list[str],
         doc_type: str,
         page_image,
-    ) -> dict[str, str]:
+    ) -> tuple[dict[str, str], str]:
         if not missing_fields or self.client is None or page_image is None:
-            return {}
+            return {}, ""
+
+        from pydantic import BaseModel, Field, create_model
+        
+        schema_fields = {}
+        for f in missing_fields:
+            field_meta = FIELD_DEFINITIONS.get(f, {"type": str, "desc": ""})
+            schema_fields[f] = (field_meta["type"], Field(description=field_meta["desc"]))
+
+        DynamicSchema = create_model(f"{doc_type.capitalize()}Schema", **schema_fields)
+
+        prompt = (
+            f"Extract the requested missing fields from this {doc_type}. "
+            f"Return ONLY valid JSON according to the schema. "
+            f"If a field is not visibly present in the document, return an empty string for text, or 0.0 for numbers."
+        )
+        
+        try:
+            data = self.client.get_vision_completion(prompt, page_image, schema=DynamicSchema)
+            return data or {}, ""
+        except Exception as e:
+            logger.error(f"OpenAI fallback failed: {e}")
+            return {}, f"OpenAI Vision extraction failed: {e}"
 
         from pydantic import BaseModel, Field, create_model
         

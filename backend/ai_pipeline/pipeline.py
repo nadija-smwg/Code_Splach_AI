@@ -58,6 +58,7 @@ class AIPipeline:
         start_time = time.perf_counter()
 
         errors: list[str] = []
+        warnings: list[str] = []
         all_entities: list[dict] = []
 
         # Resolve path once to avoid surprises with relative paths
@@ -130,7 +131,9 @@ class AIPipeline:
                     pdf_path=pdf_path,
                     document_id=document_id,
                 )
-                extracted_entities = extraction_result.entities  # list[ExtractedEntity]
+                extracted_entities = extraction_result.entities
+                if hasattr(extraction_result, "warnings") and extraction_result.warnings:
+                    warnings.extend(extraction_result.warnings)  # list[ExtractedEntity]
 
             except Exception as exc:
                 logger.exception(
@@ -289,6 +292,7 @@ class AIPipeline:
             "raw_ocr": [],
             "processing_time_ms": 0,
             "errors": [error],
+            "warnings": [],
         }
 
 
