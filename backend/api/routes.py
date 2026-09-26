@@ -108,6 +108,8 @@ def _get_documents_for_shipment(shipment_id: str) -> list:
     Resolve pipeline result dicts for a shipment.
     Always uses real DB data. Never falls back to demo.
     """
+    if _is_demo(shipment_id):
+        return _get_demo_documents()
     real = _fetch_dossier_documents(shipment_id)
     return real if real is not None else []
 
@@ -119,54 +121,24 @@ def _get_documents_for_shipment(shipment_id: str) -> list:
 def _build_graph_from_documents(shipment_id: str, documents: list):
     """
     Generic graph builder: works with any list of pipeline result dicts.
-    Adds all entities and creates MUST_MATCH edges across documents
-    for the same entity_type.
+    Resolves source entities into canonical shipment fields. Each raw value is
+    retained as a source assertion, rather than being overwritten by a merge.
 
     Returns (KnowledgeBuilder, documents).
     """
     from reasoning.knowledge_builder import KnowledgeBuilder
-    from xai_types import ExtractedEntity
+    from reasoning.entity_resolution import resolve_documents
 
     kb = KnowledgeBuilder()
+    kb.add_shipment_node(shipment_id)
 
     for doc in documents:
         kb.add_document_node(doc["document_id"], doc.get("document_type", "unknown"))
 
-    def _to_entity(e: dict) -> ExtractedEntity:
-        return ExtractedEntity(
-            entity_type=e["entity_type"],
-            value=e["value"],
-            normalized_value=e.get("normalized_value", e["value"]),
-            unit=e.get("unit"),
-            page=e.get("page", 1),
-            bbox=e.get("bbox", []),
-            extraction_confidence=e.get("extraction_confidence", 0.9),
-            ocr_text=e.get("value", ""),
-        )
-
-    # Collect entity nodes grouped by entity_type for cross-doc matching
-    by_type: dict[str, list[tuple[str, str]]] = {}
-
-    for doc in documents:
-        doc_id = doc["document_id"]
-        for idx, entity in enumerate(doc.get("entities", [])):
-            etype = entity.get("entity_type")
-            if not etype:
-                continue
-            node_id = f"n_{doc_id}_{etype}_{idx}"
-            kb.add_entity_node(node_id, _to_entity(entity), doc_id)
-            by_type.setdefault(etype, []).append((node_id, doc_id))
-
-    # MUST_MATCH edges: connect first occurrence per document across documents
-    for _etype, entries in by_type.items():
-        seen: dict[str, str] = {}
-        for node_id, doc_id in entries:
-            if doc_id not in seen:
-                seen[doc_id] = node_id
-        unique_nodes = list(seen.values())
-        if len(unique_nodes) > 1:
-            for j in range(1, len(unique_nodes)):
-                kb.add_relationship(unique_nodes[0], unique_nodes[j], "MUST_MATCH")
+    for field in resolve_documents(shipment_id, documents):
+        kb.add_canonical_field_node(field, shipment_id)
+        for assertion in field["assertions"]:
+            kb.add_source_assertion_node(assertion)
 
     return kb, documents
 
@@ -241,8 +213,7 @@ def _get_graph_for_shipment(shipment_id: str):
     Smart graph router:
     Always uses real DB data. Never falls back to demo.
     """
-    real = _fetch_dossier_documents(shipment_id)
-    return _build_graph_from_documents(shipment_id, real if real is not None else [])
+    return _build_graph_from_documents(shipment_id, _get_documents_for_shipment(shipment_id))
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -354,6 +325,21 @@ async def get_knowledge_graph(shipment_id: str):
     return kb.to_vis_json()
 
 
+@router.get("/shipments/{shipment_id}/key-fields")
+async def get_key_fields(shipment_id: str):
+    """Return canonical shipment fields with every document assertion."""
+    from reasoning.entity_resolution import resolve_documents
+
+    fields = resolve_documents(shipment_id, _get_documents_for_shipment(shipment_id))
+    counts = {status: sum(field["status"] == status for field in fields)
+              for status in ("match", "conflict", "warning", "pending")}
+    return {
+        "shipment_id": shipment_id,
+        "summary": {"total_fields": len(fields), **counts},
+        "fields": fields,
+    }
+
+
 @router.get("/shipments/{shipment_id}/discrepancies")
 async def get_discrepancies(shipment_id: str):
     from reasoning.rule_evaluator import RuleEvaluator
@@ -374,7 +360,8 @@ async def get_discrepancies(shipment_id: str):
         xai_block = compiler.compile(f)
         discrepancies.append({
             "discrepancy_id": f"{f.rule_id}_{f.node_a_id}_{f.node_b_id}",
-            "field": f"{f.node_a_id}|{f.node_b_id}",
+            "field": f.entity_type,
+            "canonical_field_id": f.canonical_field_id,
             "rule_id": f.rule_id,
             "severity": "high" if "NUMERIC" in f.rule_id else "medium",
             "severity_score": round(1.0 - xai_block.layer3.overall_confidence, 4),

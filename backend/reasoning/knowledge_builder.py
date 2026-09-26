@@ -1,102 +1,85 @@
+"""NetworkX construction for canonical shipment-field knowledge graphs."""
+from typing import Any, Dict
 import networkx as nx
-from typing import Dict
-from xai_types import ExtractedEntity
+
 
 class KnowledgeBuilder:
-    """
-    Builds a knowledge graph from normalized entities.
-    Strictly handles graph construction and XAI Provenance (Layer 1) storage.
-    Conflict detection is handled separately by the Rule Evaluator.
-    """
-    
+    """Builds a provenance-preserving graph from resolved shipment fields."""
+
     def __init__(self):
         self.graph = nx.Graph()
-    
-    def add_document_node(self, document_id: str, document_type: str, filename: str = ""):
-        """Add a source document node."""
-        self.graph.add_node(document_id, 
-                          node_type="document",
-                          document_type=document_type,
-                          label=filename or document_type)
-                          
-    def add_entity_node(self, node_id: str, entity: ExtractedEntity, source_doc_id: str):
-        """
-        Add an entity node. 
-        Crucial XAI Step: Stores provenance metadata directly in the node.
-        """
-        self.graph.add_node(node_id,
-                            node_type="entity",
-                            entity_type=entity.entity_type,
-                            value=entity.normalized_value or entity.value,
-                            raw_value=entity.value,
-                            source_doc=source_doc_id,
-                            bbox=entity.bbox,
-                            extraction_confidence=entity.extraction_confidence,
-                            ocr_text=entity.ocr_text,
+
+    def add_shipment_node(self, shipment_id: str) -> None:
+        self.graph.add_node(shipment_id, node_type="shipment", label="Shipment Dossier")
+
+    def add_document_node(self, document_id: str, document_type: str, filename: str = "") -> None:
+        self.graph.add_node(document_id, node_type="document", document_type=document_type, label=filename or document_type.replace("_", " ").title())
+
+    def add_canonical_field_node(self, field: dict[str, Any], shipment_id: str) -> None:
+        field_id = field["canonical_field_id"]
+        self.graph.add_node(field_id,
+                            node_type="canonical_field", entity_type=field["entity_type"],
+                            value=field["consensus_value"], consensus_value=field["consensus_value"],
+                            unit=field.get("unit"), status=field["status"],
+                            resolution_confidence=field.get("resolution_confidence", 0.0),
+                            label=field["label"])
+        self.graph.add_edge(shipment_id, field_id, relationship="HAS_FIELD")
+
+    def add_source_assertion_node(self, assertion: dict[str, Any]) -> None:
+        assertion_id = assertion["assertion_id"]
+        self.graph.add_node(assertion_id,
+                            node_type="source_assertion", entity_type=assertion["entity_type"],
+                            value=assertion["normalized_value"], raw_value=assertion["raw_value"],
+                            source_doc=assertion["document_id"], bbox=assertion.get("bbox", []),
+                            page=assertion.get("page", 1), extraction_confidence=assertion.get("extraction_confidence", 0.0),
+                            ocr_text=assertion.get("ocr_text", ""), is_outlier=assertion.get("is_outlier", False),
+                            label=f"{assertion['document_label']}: {assertion['raw_value']}")
+        self.graph.add_edge(assertion["document_id"], assertion_id, relationship="CONTAINS")
+        self.graph.add_edge(assertion_id, assertion["canonical_field_id"], relationship="ASSERTS_VALUE_FOR")
+
+    # Retained for standalone legacy tests.
+    def add_entity_node(self, node_id: str, entity: Any, source_doc_id: str) -> None:
+        self.graph.add_node(node_id, node_type="source_assertion", entity_type=entity.entity_type,
+                            value=entity.normalized_value or entity.value, raw_value=entity.value,
+                            source_doc=source_doc_id, bbox=entity.bbox,
+                            extraction_confidence=entity.extraction_confidence, ocr_text=entity.ocr_text,
                             label=f"{entity.entity_type} ({entity.value})")
-                            
-        # Link entity to its source document
-        self.graph.add_edge(source_doc_id, node_id, relationship="EXTRACTED_FROM")
-        
-    def add_relationship(self, node_a_id: str, node_b_id: str, relationship_type: str):
-        """
-        Add logical relationships between nodes (e.g., MUST_MATCH).
-        """
+        self.graph.add_edge(source_doc_id, node_id, relationship="CONTAINS")
+
+    def add_relationship(self, node_a_id: str, node_b_id: str, relationship_type: str) -> None:
         self.graph.add_edge(node_a_id, node_b_id, relationship=relationship_type)
-        
+
     def get_graph(self) -> nx.Graph:
         return self.graph
-        
+
     def to_vis_json(self) -> Dict:
-        """Serialize graph for vis.js frontend visualization."""
+        styles = {
+            "shipment": ({"background": "#312e81", "border": "#818cf8"}, "diamond", 24),
+            "document": ({"background": "#1d4ed8", "border": "#60a5fa"}, "box", 20),
+            "canonical_field": ({"background": "#7e22ce", "border": "#c084fc"}, "hexagon", 18),
+            "source_assertion": ({"background": "#10b981", "border": "#34d399"}, "dot", 12),
+        }
         nodes = []
         for node_id, data in self.graph.nodes(data=True):
-            node_type = data.get("node_type", "unknown")
+            node_type = data.get("node_type", "source_assertion")
+            color, shape, size = styles.get(node_type, styles["source_assertion"])
+            status = data.get("status", "conflict" if data.get("is_outlier") else "match")
+            if status == "conflict" or data.get("is_outlier"):
+                color = {"background": "#dc2626", "border": "#fca5a5"}
+            elif status == "warning":
+                color = {"background": "#d97706", "border": "#fcd34d"}
+            nodes.append({"id": node_id, "label": data.get("label", node_id), "type": node_type,
+                          "color": color, "shape": shape, "size": size, "status": status,
+                          "document_type": data.get("document_type"), "shadow": True,
+                          "font": {"color": "#e2e8f0"}})
 
-            # Determine color and shape based on node type and status
-            if node_type == "document":
-                color = {"background": "#4A90D9", "border": "#2563eb"}
-                shape = "box"
-                size = 20
-            else:
-                # Entity node — colour by presence in MUST_MATCH edges
-                neighbors = list(self.graph.neighbors(node_id))
-                in_conflict = any(
-                    self.graph.edges[node_id, nb].get("relationship") == "MUST_MATCH"
-                    for nb in neighbors
-                    if self.graph.has_edge(node_id, nb)
-                )
-                color = {"background": "#f59e0b", "border": "#d97706"} if in_conflict else {"background": "#10b981", "border": "#059669"}
-                shape = "dot"
-                size = 12
-
-            node = {
-                "id": node_id,
-                "label": data.get("label", node_id),
-                "type": node_type,
-                "color": color,
-                "shape": shape,
-                "size": size,
-                "document_type": data.get("document_type"),
-                "status": "conflict" if node_type == "entity" and in_conflict else "pending",  # type: ignore[possibly-undefined]
-                "shadow": True,
-                "font": {"color": "#e2e8f0"},
-            }
-            nodes.append(node)
-
+        edge_styles = {"HAS_FIELD": ("#818cf8", 2), "CONTAINS": ("#64748b", 1),
+                       "ASSERTS_VALUE_FOR": ("#c084fc", 2), "MUST_MATCH": ("#f59e0b", 2)}
         edges = []
-        for u, v, data in self.graph.edges(data=True):
+        for source, target, data in self.graph.edges(data=True):
             relationship = data.get("relationship", "")
-            # Confidence proxy: MUST_MATCH edges carry 1.0; EXTRACTED_FROM carry 0.9
-            confidence = 0.9 if relationship == "EXTRACTED_FROM" else 1.0
-            edges.append({
-                "from": u,
-                "to": v,
-                "label": relationship,
-                "confidence": confidence,
-                "width": 2 if relationship == "MUST_MATCH" else 1,
-                "color": {"color": "#f59e0b"} if relationship == "MUST_MATCH" else {"color": "#64748b"},
-                "font": {"color": "#94a3b8", "size": 10},
-            })
-
+            color, width = edge_styles.get(relationship, ("#64748b", 1))
+            edges.append({"from": source, "to": target, "label": relationship,
+                          "confidence": 1.0, "width": width, "color": {"color": color},
+                          "font": {"color": "#94a3b8", "size": 10}})
         return {"nodes": nodes, "edges": edges}

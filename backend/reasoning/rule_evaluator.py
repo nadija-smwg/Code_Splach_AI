@@ -1,6 +1,7 @@
-import networkx as nx
-from typing import List, Any
+"""Evaluate canonical-field assertions rather than pairwise document edges."""
 from dataclasses import dataclass, field
+from typing import Any, List
+import networkx as nx
 from reasoning.semantic_fallback import SemanticFallback
 
 
@@ -8,19 +9,19 @@ from reasoning.semantic_fallback import SemanticFallback
 class RuleFailure:
     rule_id: str
     description: str
-    node_a_id: str
-    node_b_id: str
+    node_a_id: str                 # representative consensus assertion
+    node_b_id: str                 # outlying assertion
     value_a: Any
     value_b: Any
     delta: str
     semantic_score: float = field(default=0.0)
+    canonical_field_id: str = ""
+    entity_type: str = ""
 
 
 class RuleEvaluator:
-    """
-    The Symbolic Logic engine. It evaluates the Knowledge Graph against
-    deterministic compliance rules.
-    """
+    """Evaluates all source assertions attached to a canonical field."""
+
     def __init__(self, graph: nx.Graph):
         self.graph = graph
         self.semantic_fallback = SemanticFallback()
@@ -28,54 +29,59 @@ class RuleEvaluator:
 
     def evaluate(self) -> List[RuleFailure]:
         self.failures = []
-        for u, v, data in self.graph.edges(data=True):
-            relationship = data.get("relationship")
-
-            if relationship == "MUST_MATCH":
-                self._check_must_match(u, v)
-
+        canonical_nodes = [node_id for node_id, data in self.graph.nodes(data=True)
+                           if data.get("node_type") == "canonical_field"]
+        if canonical_nodes:
+            for field_id in canonical_nodes:
+                self._evaluate_field(field_id)
+        else:
+            # Compatibility for the legacy test graph.
+            for left, right, data in self.graph.edges(data=True):
+                if data.get("relationship") == "MUST_MATCH":
+                    self._evaluate_pair(left, right)
         return self.failures
 
-    def _check_must_match(self, node_a: str, node_b: str):
-        data_a = self.graph.nodes[node_a]
-        data_b = self.graph.nodes[node_b]
-
-        # Only evaluate entity-to-entity MUST_MATCH edges (not doc->entity edges)
-        if data_a.get("node_type") != "entity" or data_b.get("node_type") != "entity":
+    def _evaluate_field(self, field_id: str) -> None:
+        field = self.graph.nodes[field_id]
+        assertions = [node for node in self.graph.neighbors(field_id)
+                      if self.graph.nodes[node].get("node_type") == "source_assertion"]
+        if len(assertions) < 2 or field.get("status") != "conflict":
             return
-
-        val_a = data_a.get("value")
-        val_b = data_b.get("value")
-
-        if val_a is None or val_b is None:
+        consensus_value = field.get("consensus_value")
+        consensus_nodes = [node for node in assertions
+                           if not self.graph.nodes[node].get("is_outlier")]
+        if not consensus_nodes:
             return
+        representative = consensus_nodes[0]
+        for outlier in (node for node in assertions if self.graph.nodes[node].get("is_outlier")):
+            self._create_failure(representative, outlier, field_id, consensus_value)
 
-        # 1. Numeric constraint evaluation
-        if isinstance(val_a, (int, float)) and isinstance(val_b, (int, float)):
-            difference = abs(float(val_a) - float(val_b))
-            if difference > 0.01:
-                self.failures.append(RuleFailure(
-                    rule_id="RULE_001_NUMERIC_MATCH",
-                    description=f"{data_a.get('entity_type', 'Value')} must match between documents.",
-                    node_a_id=node_a,
-                    node_b_id=node_b,
-                    value_a=val_a,
-                    value_b=val_b,
-                    delta=f"Variance of {difference:.2f}",
-                    semantic_score=1.0,  # Numeric comparison is always precise
-                ))
+    def _evaluate_pair(self, left: str, right: str) -> None:
+        self._create_failure(left, right, "", self.graph.nodes[left].get("value"))
 
-        # 2. String constraint evaluation with Semantic Fallback
-        elif isinstance(val_a, str) and isinstance(val_b, str):
-            score = self.semantic_fallback.similarity_score(val_a, val_b)
-            if score < 0.85:
-                self.failures.append(RuleFailure(
-                    rule_id="RULE_002_STRING_MATCH",
-                    description=f"{data_a.get('entity_type', 'Text')} must match semantically.",
-                    node_a_id=node_a,
-                    node_b_id=node_b,
-                    value_a=val_a,
-                    value_b=val_b,
-                    delta="Semantic mismatch detected",
-                    semantic_score=score,
-                ))
+    def _create_failure(self, left: str, right: str, field_id: str, consensus_value: Any) -> None:
+        first, second = self.graph.nodes[left], self.graph.nodes[right]
+        left_value, right_value = first.get("value"), second.get("value")
+        entity_type = first.get("entity_type", "Value")
+        if isinstance(left_value, (int, float)) and isinstance(right_value, (int, float)):
+            difference = abs(float(left_value) - float(right_value))
+            if difference <= 0.01:
+                return
+            self.failures.append(RuleFailure(
+                rule_id="RULE_001_NUMERIC_MATCH", entity_type=entity_type,
+                canonical_field_id=field_id,
+                description=f"{entity_type.replace('_', ' ').title()} differs from the resolved shipment consensus.",
+                node_a_id=left, node_b_id=right, value_a=left_value, value_b=right_value,
+                delta=f"Variance of {difference:.2f}", semantic_score=1.0,
+            ))
+        elif isinstance(left_value, str) and isinstance(right_value, str):
+            score = self.semantic_fallback.similarity_score(left_value, right_value)
+            if score >= 0.85:
+                return
+            self.failures.append(RuleFailure(
+                rule_id="RULE_002_STRING_MATCH", entity_type=entity_type,
+                canonical_field_id=field_id,
+                description=f"{entity_type.replace('_', ' ').title()} differs from the resolved shipment consensus.",
+                node_a_id=left, node_b_id=right, value_a=left_value, value_b=right_value,
+                delta="Semantic mismatch detected", semantic_score=score,
+            ))

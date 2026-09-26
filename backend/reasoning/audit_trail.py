@@ -120,7 +120,7 @@ def build_demo_trail(shipment_id: str, documents: List[dict]) -> None:
     entries.append(AuditEntry(
         timestamp=ts(15),
         module="rule_evaluator",
-        action="Evaluated MUST_MATCH constraints across knowledge graph edges",
+        action="Resolved canonical shipment fields and evaluated source assertions",
         confidence=None,
         outcome="evaluation_complete",
     ))

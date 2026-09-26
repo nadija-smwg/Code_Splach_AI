@@ -19,7 +19,7 @@ import networkx as nx
 def _get_entity_value(graph: nx.Graph, entity_type: str, default: str = "") -> str:
     """Extract the first matching entity value from the knowledge graph."""
     for node_id, data in graph.nodes(data=True):
-        if data.get("node_type") == "entity" and data.get("entity_type") == entity_type:
+        if data.get("node_type") in {"canonical_field", "entity"} and data.get("entity_type") == entity_type:
             val = data.get("value", default)
             return str(val) if val is not None else default
     return default
