@@ -6,9 +6,21 @@ import { useShipment } from '../../hooks/useShipment';
 interface Props { onTriggerToast: (t: { title: string; message: string; type?: 'error' | 'info' | 'success' }) => void; }
 
 interface XAIBlock {
+  layer1: { source_documents: string[]; };
   layer2: { failed_rule_id: string; logical_steps: string[]; conclusion: string; };
   layer3: { overall_confidence: number; confidence_level: string; confidence_explanation: string; };
   layer4: { recommended_action: string; delta_required: string; };
+}
+
+interface DiscrepancySource {
+  document_id: string;
+  document_label: string;
+  document_type: string;
+  raw_value: string;
+  normalized_value: string | number;
+  page: number;
+  bbox: number[];
+  extraction_confidence: number;
 }
 
 interface ApiDiscrepancy {
@@ -17,9 +29,12 @@ interface ApiDiscrepancy {
   severity: string;
   severity_score: number;
   status: string;
+  field: string;
+  field_label: string;
   value_a: string;
   value_b: string;
   delta: string;
+  sources: DiscrepancySource[];
   xai_block: XAIBlock;
 }
 
@@ -69,7 +84,8 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
 
   const filtered = discrepancies.filter(d => {
     const matchesCat = filter === 'all' || d.severity === filter;
-    const matchesSearch = d.rule_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = (d.field_label || d.field || d.rule_id).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.rule_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.delta.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
@@ -109,7 +125,7 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
         </div>
         <div className="relative w-full sm:w-72">
           <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[16px]">search</span>
-          <input type="text" placeholder="Search rule, delta..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          <input type="text" placeholder="Search field, rule, variance..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 bg-surface-container-low rounded-lg text-xs text-on-surface placeholder:text-outline focus:outline-none" />
         </div>
       </div>
@@ -144,6 +160,10 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
         <div className="space-y-4">
           {filtered.map(item => {
             const xai = item.xai_block;
+            const sources = item.sources?.length ? item.sources : [
+              { document_id: '', document_label: xai.layer1.source_documents[0] || 'Source A', document_type: 'unknown', raw_value: item.value_a, normalized_value: item.value_a, page: 1, bbox: [], extraction_confidence: 0 },
+              { document_id: '', document_label: xai.layer1.source_documents[1] || 'Source B', document_type: 'unknown', raw_value: item.value_b, normalized_value: item.value_b, page: 1, bbox: [], extraction_confidence: 0 },
+            ];
             const isExpanded = expandedId === item.discrepancy_id;
             const isResolved = resolvedItems[item.discrepancy_id];
             return (
@@ -152,9 +172,9 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
                 <div className="bg-primary/5 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/20 text-xs">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${isResolved ? 'bg-secondary' : 'bg-primary animate-pulse'}`}></span>
-                    <span className="font-bold text-on-surface">{xai.layer2.failed_rule_id}</span>
+                    <span className="font-bold text-on-surface">{item.field_label || item.field}</span>
                     <span className="text-outline">•</span>
-                    <span className="font-mono text-outline text-[10px]">{item.discrepancy_id.slice(0, 24)}</span>
+                    <span className="font-mono text-outline text-[10px]">{item.rule_id}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <ConfidencePill level={xai.layer3.confidence_level} score={xai.layer3.overall_confidence} />
@@ -167,16 +187,19 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
                 {/* Main body */}
                 <div className="p-4 grid grid-cols-1 xl:grid-cols-12 gap-4 text-xs">
                   <div className="xl:col-span-7 space-y-3">
+                    <div>
+                      <div className="text-[10px] text-primary font-bold uppercase tracking-wider">CUSDEC field requiring resolution</div>
+                      <h2 className="text-base font-bold text-on-surface mt-0.5">{item.field_label || item.field}</h2>
+                    </div>
                     {/* Values */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-surface-container-low p-2.5 rounded-lg">
-                        <div className="text-[10px] text-outline uppercase">Document A</div>
-                        <div className="text-sm font-bold text-on-surface font-mono mt-0.5">{item.value_a}</div>
-                      </div>
-                      <div className="bg-surface-container-low p-2.5 rounded-lg">
-                        <div className="text-[10px] text-outline uppercase">Document B</div>
-                        <div className="text-sm font-bold text-on-surface font-mono mt-0.5">{item.value_b}</div>
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                      {sources.map((source, index) => (
+                        <button key={`${source.document_id}-${index}`} onClick={() => navigate('/review-workspace')} className="bg-surface-container-low hover:bg-surface-container p-2.5 rounded-lg text-left transition-colors">
+                          <div className="text-[10px] text-outline uppercase truncate" title={source.document_label}>{source.document_label}</div>
+                          <div className="text-sm font-bold text-on-surface font-mono mt-0.5 break-all">{source.raw_value}</div>
+                          <div className="text-[10px] text-on-surface-variant mt-1">Page {source.page} · {(source.extraction_confidence * 100).toFixed(0)}% confidence</div>
+                        </button>
+                      ))}
                       <div className="bg-primary-fixed/30 p-2.5 rounded-lg">
                         <div className="text-[10px] text-primary uppercase font-bold">Variance</div>
                         <div className="text-sm font-bold text-primary font-mono mt-0.5">{item.delta}</div>
