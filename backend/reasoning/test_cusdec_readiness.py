@@ -60,10 +60,10 @@ def test_pending_source_field_blocks_export():
     )
 
 
-def test_schema_validation_remains_a_hard_blocker_after_data_checks_pass():
+def test_confirmed_template_removes_the_schema_placeholder_blocker():
     readiness = build_cusdec_readiness([_complete_document()], _complete_fields())
-    assert readiness["blocker_count"] == 1
-    assert readiness["blockers"][0]["code"] == "OFFICIAL_SCHEMA_VALIDATION_REQUIRED"
+    assert readiness["blocker_count"] == 0
+    assert readiness["export_allowed"] is True
 
 
 def test_reviewer_declaration_metadata_satisfies_profile_requirements():

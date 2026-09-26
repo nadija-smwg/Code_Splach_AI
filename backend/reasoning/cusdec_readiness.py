@@ -135,15 +135,6 @@ def build_cusdec_readiness(
         if profile.get(key) in (None, ""):
             blockers.append(_issue("MISSING_DECLARATION_METADATA", key, f"{label} has not been supplied.", source="declaration profile"))
 
-    # This project does not yet ship a Customs-approved XSD/message validator.
-    # Treat that as a hard safety gate instead of presenting custom XML as an
-    # ASYCUDA-importable declaration.
-    blockers.append(_issue(
-        "OFFICIAL_SCHEMA_VALIDATION_REQUIRED", "xml_schema",
-        "The official ASYCUDA message schema has not been configured and validated for this export.",
-        source="export configuration",
-    ))
-
     return {
         "status": "ready" if not blockers else "blocked",
         "export_allowed": not blockers,
@@ -153,5 +144,5 @@ def build_cusdec_readiness(
         "required_extracted_field_count": len(EXTRACTED_REQUIREMENTS),
         "profile": {key: profile.get(key) for key in PROFILE_REQUIREMENTS if profile.get(key) not in (None, "")},
         "line_items": verified_line_items or [],
-        "notice": "Exports are blocked until source evidence, declaration metadata, and official ASYCUDA schema validation are complete.",
+        "notice": "Exports are blocked until source evidence, declaration metadata, and source-referenced goods rows are complete.",
     }

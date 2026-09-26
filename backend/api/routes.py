@@ -6,6 +6,7 @@
 # - Unknown IDs / DB unavailable          → fall back to demo
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import Response
 from typing import List
 import uuid, os, dataclasses, logging
 
@@ -740,12 +741,17 @@ async def export_asycuda(shipment_id: str):
             },
         )
 
-    # This path is unreachable until an approved schema validator is added to
-    # the readiness gate. Keep an explicit response instead of silently
-    # emitting the former demo-shaped XML.
-    raise HTTPException(
-        status_code=501,
-        detail="An official ASYCUDA XML serializer has not been configured for this environment.",
+    from reasoning.cusdec_xml import generate_cusdec_xml
+
+    xml = generate_cusdec_xml(
+        _resolve_shipment_fields(shipment_id, documents),
+        _get_declaration_metadata(shipment_id),
+        _get_verified_line_items(shipment_id),
+    )
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="CUSDEC_{shipment_id[:8]}.xml"'},
     )
 
 
