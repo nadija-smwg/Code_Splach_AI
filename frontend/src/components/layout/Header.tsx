@@ -20,27 +20,45 @@ export function Header() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  const isOverview = currentPath === '/';
+
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] border-b border-outline-variant/30">
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isOverview
+          ? 'bg-transparent border-b border-white/0 shadow-none'
+          : 'bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] border-b border-outline-variant/30'
+      }`}>
         <div className="h-20 w-full px-4 sm:px-8 flex items-center justify-between gap-4">
           {/* Left Section: Menu & Logo */}
           <div className="flex items-center gap-3 shrink-0">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 -ml-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-low transition-colors"
+              className={`p-2 -ml-2 rounded-lg transition-colors ${
+                isOverview
+                  ? 'text-white/80 hover:text-white hover:bg-white/10'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low'
+              }`}
             >
               <span className="material-symbols-outlined text-[24px]">menu</span>
             </button>
 
             <Link to="/" className="flex items-center gap-1.5 group">
-              <div className="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105 ${
+                isOverview ? 'bg-white/20 backdrop-blur-md border border-white/30' : 'bg-primary-container'
+              }`}>
                 <span className="material-symbols-outlined text-[20px]">token</span>
               </div>
-              <span className="text-lg tracking-tight font-semibold text-on-surface">
-                Clearance<span className="text-primary-container">X</span>
+              <span className={`text-lg tracking-tight font-semibold ${
+                isOverview ? 'text-white' : 'text-on-surface'
+              }`}>
+                Clearance<span className={isOverview ? 'text-[#5b8fd4]' : 'text-primary-container'}>X</span>
               </span>
-              <span className="text-[11px] text-secondary bg-secondary-container/20 px-1.5 py-0.5 rounded font-semibold ml-1 hidden sm:inline-block">
+              <span className={`text-[11px] px-1.5 py-0.5 rounded font-semibold ml-1 hidden sm:inline-block ${
+                isOverview
+                  ? 'text-emerald-300 bg-emerald-400/10 border border-emerald-400/20'
+                  : 'text-secondary bg-secondary-container/20'
+              }`}>
                 LK-ASYCUDA
               </span>
             </Link>
@@ -49,13 +67,23 @@ export function Header() {
           {/* Quick Actions */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="relative hidden xl:block">
-              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+              <span className={`material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[18px] ${
+                isOverview ? 'text-white/50' : 'text-outline'
+              }`}>search</span>
               <input
                 type="text"
                 placeholder="Search manifests, HS codes..."
-                className="w-60 bg-surface-container-low pl-9 pr-8 py-1.5 rounded-lg text-xs text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(79,70,229,0.15)] transition-all"
+                className={`w-60 pl-9 pr-8 py-1.5 rounded-lg text-xs transition-all focus:outline-none ${
+                  isOverview
+                    ? 'bg-white/10 backdrop-blur-md border border-white/15 text-white placeholder:text-white/40 focus:bg-white/15 focus:shadow-[0_0_0_2px_rgba(255,255,255,0.1)]'
+                    : 'bg-surface-container-low text-on-surface placeholder:text-outline focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(79,70,229,0.15)]'
+                }`}
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-outline px-1 rounded bg-surface-container border border-outline-variant/30">⌘K</span>
+              <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1 rounded border ${
+                isOverview
+                  ? 'text-white/40 bg-white/5 border-white/10'
+                  : 'text-outline bg-surface-container border-outline-variant/30'
+              }`}>⌘K</span>
             </div>
 
 
@@ -68,7 +96,11 @@ export function Header() {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center focus:outline-none"
               >
-                <div className="w-8 h-8 rounded-full bg-primary-container/10 border border-primary-container/20 flex items-center justify-center text-xs font-bold text-primary shadow-sm hover:scale-105 transition-transform">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm hover:scale-105 transition-transform ${
+                  isOverview
+                    ? 'bg-white/15 backdrop-blur-md border border-white/25 text-white'
+                    : 'bg-primary-container/10 border border-primary-container/20 text-primary'
+                }`}>
                   SL
                 </div>
               </button>

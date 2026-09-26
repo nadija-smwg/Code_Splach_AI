@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ShipmentProvider } from './hooks/useShipment';
 
 import { Header } from './components/layout/Header';
@@ -24,8 +24,10 @@ interface Toast {
   type?: 'error' | 'info' | 'success';
 }
 
-function App() {
+function AppInner() {
   const [toast, setToast] = useState<Toast | null>(null);
+  const location = useLocation();
+  const isOverview = location.pathname === '/';
 
   const showToast = (toastObj: Toast) => {
     setToast(toastObj);
@@ -33,11 +35,9 @@ function App() {
   };
 
   return (
-    <BrowserRouter>
-      <ShipmentProvider>
-      <div className="min-h-screen flex flex-col bg-background font-sans text-on-surface antialiased">
-        <Header />
-        <main className="w-full pt-20 flex-1 flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background font-sans text-on-surface antialiased">
+      <Header />
+      <main className={`w-full flex-1 flex flex-col ${ isOverview ? '' : 'pt-20' }`}>
           <Routes>
             <Route path="/" element={<ScreenOverview onTriggerToast={showToast} />} />
             <Route path="/dossiers" element={<ScreenDossiers onTriggerToast={showToast} />} />
@@ -57,6 +57,14 @@ function App() {
         <Footer />
         <ToastNotification toast={toast} onClose={() => setToast(null)} />
       </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <ShipmentProvider>
+        <AppInner />
       </ShipmentProvider>
     </BrowserRouter>
   );
