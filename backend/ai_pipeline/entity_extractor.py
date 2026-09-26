@@ -738,7 +738,7 @@ class EntityExtractor:
         missing = [f for f in entity_schema if f not in locally_found]
         telemetry.openai_fallback_fields = len(missing)
 
-        if missing and self._model is not None:
+        if missing and getattr(self, "client", None) is not None:
             # Convert PDF page 1 to image for OpenAI
             page_image = self._get_page_image(pdf_path, page_num=1)
 
