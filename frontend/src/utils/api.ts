@@ -62,3 +62,19 @@ export async function listDossiers(): Promise<{ dossiers: { dossier_id: string; 
   const { data } = await api.get('/dossiers');
   return data;
 }
+
+export interface RuleCheck {
+  id: string;
+  label: string;
+  description: string;
+  status: string;
+}
+
+export async function getActiveRules(): Promise<RuleCheck[]> {
+  const { data } = await api.get<RuleCheck[]>('/rules/active');
+  return data;
+}
+export async function resolveDiscrepancy(shipmentId: string, discrepancyId: string, decision: string): Promise<{ status: string }> {
+  const { data } = await api.post(`/shipments/${shipmentId}/discrepancies/${discrepancyId}/resolve`, { decision });
+  return data;
+}

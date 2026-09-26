@@ -34,43 +34,51 @@ export type DocumentType =
 // ============================================
 // DISCREPANCY & XAI LAYERS
 // ============================================
-export interface DiscrepancySource {
-  document_id: string;
-  document_type: string;
-  value: string;
-  page: number;
-  bbox: number[];
+export interface XAILayer1_Provenance {
+  source_documents: string[];
+  ocr_snippets: string[];
+  bboxes: number[][][];
 }
 
-export interface ReasoningChain {
-  steps: string[];
+export interface XAILayer2_ReasoningChain {
+  failed_rule_id: string;
+  failed_rule_description: string;
+  logical_steps: string[];
   conclusion: string;
 }
 
-export interface DecomposedConfidence {
-  extraction: number;
-  classification: number;
-  matching: number;
-  overall: number;
-  explanation?: string;
-  level?: 'green' | 'yellow' | 'red';
+export interface XAILayer3_Confidence {
+  ocr_confidence: number;
+  extraction_confidence: number;
+  semantic_match_confidence: number;
+  overall_confidence: number;
+  confidence_explanation: string;
+  confidence_level: 'high' | 'medium' | 'low';
 }
 
-export interface Counterfactual {
-  options: string[];
-  recommendation: string;
+export interface XAILayer4_Counterfactual {
+  recommended_action: string;
+  delta_required: string;
+}
+
+export interface XAIBlock {
+  layer1: XAILayer1_Provenance;
+  layer2: XAILayer2_ReasoningChain;
+  layer3: XAILayer3_Confidence;
+  layer4: XAILayer4_Counterfactual;
 }
 
 export interface Discrepancy {
   discrepancy_id: string;
   field: string;
+  rule_id: string;
   severity: 'high' | 'medium' | 'low';
   severity_score: number;
   status: 'open' | 'resolved' | 'accepted' | 'overridden';
-  sources: DiscrepancySource[];
-  reasoning_chain: ReasoningChain;
-  confidence: DecomposedConfidence;
-  counterfactual: Counterfactual;
+  value_a: string;
+  value_b: string;
+  delta: string;
+  xai_block: XAIBlock;
 }
 
 // ============================================

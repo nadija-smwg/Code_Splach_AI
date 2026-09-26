@@ -476,3 +476,49 @@ async def list_dossiers():
     except Exception as exc:
         logger.warning("list_dossiers error: %s", exc)
         return {"dossiers": []}
+
+
+# ══════════════════════════════════════════════════════════════════
+# GET /api/rules/active — return dynamic rules for Pre-Check Matrix
+# ══════════════════════════════════════════════════════════════════
+
+from pydantic import BaseModel
+
+class RuleMetadata(BaseModel):
+    id: str
+    label: str
+    description: str
+    status: str = "Ready"
+
+ACTIVE_RULES = [
+    RuleMetadata(
+        id="RULE_HS_CODE",
+        label="HS Code Concordance",
+        description="Cotton apparel harmonized between Commercial Invoice and AWB cargo description."
+    ),
+    RuleMetadata(
+        id="RULE_INCOTERMS",
+        label="Incoterms & Apportionment",
+        description="Ocean freight breakdown mapped without duty base variance (CIF Colombo)."
+    ),
+    RuleMetadata(
+        id="RULE_TIN_REGISTRY",
+        label="TIN/EORI Registry",
+        description="Declarant TIN validated with Inland Revenue Department."
+    ),
+    RuleMetadata(
+        id="RULE_WEIGHT_TOL",
+        label="Weight Tolerance Check",
+        description="Cross-document weight comparison queued for Rule Evaluator."
+    ),
+]
+
+@router.get("/rules/active", response_model=List[dict])
+async def get_active_rules():
+    """Returns the list of active checks for the Pre-Check Matrix Engine."""
+    return [rule.dict() for rule in ACTIVE_RULES]
+
+@router.post('/shipments/{shipment_id}/discrepancies/{discrepancy_id}/resolve')
+async def resolve_discrepancy(shipment_id: str, discrepancy_id: str, decision: dict):
+    return {'status': 'resolved'}
+
