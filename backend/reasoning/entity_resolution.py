@@ -86,6 +86,12 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
             entity_type = entity.get("entity_type")
             if not entity_type or entity_type not in CUSDEC_FIELDS:
                 continue
+            # New extractions retain carriers, banks, and other organisations
+            # as role-labelled evidence.  They must never be allowed to become
+            # a shipment-level consignee assertion.  The default keeps older
+            # stored dossiers compatible until they are reprocessed.
+            if entity_type == "CONSIGNEE_NAME" and not entity.get("resolver_eligible", True):
+                continue
             canonical_id = f"shipment:{shipment_id}:field:{entity_type}"
             assertion_id = f"assertion:{doc_id}:{entity_type}:{index}"
             grouped.setdefault(entity_type, []).append({
