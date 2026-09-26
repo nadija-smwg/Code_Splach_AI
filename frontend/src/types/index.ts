@@ -140,6 +140,7 @@ export interface CusdecReadiness {
   blockers: CusdecReadinessBlocker[];
   resolved_field_count: number;
   required_extracted_field_count: number;
+  profile: Record<string, string>;
   notice: string;
 }
 

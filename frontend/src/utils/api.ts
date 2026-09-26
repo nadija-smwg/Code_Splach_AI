@@ -58,6 +58,10 @@ export async function getCusdecReadiness(id: string): Promise<CusdecReadiness> {
   const { data } = await api.get<CusdecReadiness>(`/shipments/${id}/cusdec-readiness`);
   return data;
 }
+export async function saveDeclarationMetadata(id: string, values: Record<string, string>): Promise<CusdecReadiness> {
+  const { data } = await api.post(`/shipments/${id}/declaration-metadata`, { values });
+  return data.readiness;
+}
 export function downloadBlob(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
