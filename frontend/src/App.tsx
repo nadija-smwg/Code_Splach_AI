@@ -36,7 +36,7 @@ function App() {
     <BrowserRouter>
       <ShipmentProvider>
       <div className="min-h-screen flex flex-col bg-background font-sans text-on-surface antialiased">
-        <Header onTriggerToast={showToast} />
+        <Header />
         <main className="w-full pt-20 flex-1 flex flex-col">
           <Routes>
             <Route path="/" element={<ScreenOverview onTriggerToast={showToast} />} />
