@@ -46,6 +46,7 @@ You own **everything the user sees and interacts with**. The judges will evaluat
 | ~~24~~ | ~~Final Docker Commands~~ — ✅ **DONE** | ~~MUST~~ | ~~30 min~~ |
 | ~~25~~ | ~~Exact Evaluator Instructions~~ — ✅ **DONE** | ~~MUST~~ | ~~30 min~~ |
 | ~~26~~ | ~~Final Report~~ — ✅ **DONE** 🏁 **READY FOR SUBMISSION** | ~~MUST~~ | ~~1 hour~~ |
+| ~~27~~ | ~~Canonical Key Field Reconciliation UI~~ — ✅ **DONE** Added the Review Workspace reconciliation panel, consensus/outlier display, assertion-driven red highlighting, and canonical graph visual semantics. | ~~MUST~~ | ~~2–3 hours~~ |
 
 **Total estimated: ~30–42 hours across 3–4 days**
 
