@@ -20,15 +20,16 @@ class XAICompiler:
 
         # ── Layer 1: Provenance ───────────────────────────────────────────
         layer1 = XAILayer1_Provenance(
-            source_documents=[node_a.get("source_doc", ""), node_b.get("source_doc", "")],
+            source_documents=[node_a.get("source_doc_label", node_a.get("source_doc", "")), node_b.get("source_doc_label", node_b.get("source_doc", ""))],
             ocr_snippets=[node_a.get("ocr_text", ""), node_b.get("ocr_text", "")],
-            bboxes=[node_a.get("bbox", []), node_b.get("bbox", [])]
+            bboxes=[node_a.get("bbox", []), node_b.get("bbox", [])],
+            source_document_ids=[node_a.get("source_doc", ""), node_b.get("source_doc", "")],
         )
 
         # ── Layer 2: Reasoning Chain ──────────────────────────────────────
         steps = [
-            f"Extracted {node_a.get('entity_type')} from '{node_a.get('source_doc')}': {failure.value_a}",
-            f"Extracted {node_b.get('entity_type')} from '{node_b.get('source_doc')}': {failure.value_b}",
+            f"Extracted {node_a.get('entity_type', '').replace('_', ' ').title()} from '{node_a.get('source_doc_label', node_a.get('source_doc'))}': {failure.value_a}",
+            f"Extracted {node_b.get('entity_type', '').replace('_', ' ').title()} from '{node_b.get('source_doc_label', node_b.get('source_doc'))}': {failure.value_b}",
             f"Applied constraint: {failure.description}",
             f"Constraint failed — {failure.delta}",
         ]
@@ -68,15 +69,15 @@ class XAICompiler:
         if isinstance(failure.value_a, (int, float)) and isinstance(failure.value_b, (int, float)):
             delta_val = round(float(failure.value_a) - float(failure.value_b), 4)
             recommendation = (
-                f"Adjust GROSS_WEIGHT in '{node_b.get('source_doc')}' by "
-                f"{delta_val:+.2f} to match '{node_a.get('source_doc')}', "
+                f"Adjust {node_a.get('entity_type', 'the field').replace('_', ' ')} in '{node_b.get('source_doc_label', node_b.get('source_doc'))}' by "
+                f"{delta_val:+.2f} to match '{node_a.get('source_doc_label', node_a.get('source_doc'))}', "
                 f"or verify the physical measurement and update the source of truth."
             )
             delta_str = f"{delta_val:+.4f}"
         else:
             recommendation = (
                 f"Reconcile {node_a.get('entity_type')} between "
-                f"'{node_a.get('source_doc')}' and '{node_b.get('source_doc')}'. "
+                f"'{node_a.get('source_doc_label', node_a.get('source_doc'))}' and '{node_b.get('source_doc_label', node_b.get('source_doc'))}'. "
                 f"Verify the original document and update the discrepant value."
             )
             delta_str = failure.delta

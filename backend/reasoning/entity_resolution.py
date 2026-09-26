@@ -30,7 +30,8 @@ FIELD_LABELS = {
 
 
 def _display_document_type(document_type: str) -> str:
-    return document_type.replace("_", " ").title()
+    labels = {"awb": "Air Waybill", "bl": "Bill of Lading"}
+    return labels.get(document_type, document_type.replace("_", " ").title())
 
 
 def _text_key(value: Any) -> str:
@@ -80,6 +81,7 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
     for document in documents:
         doc_id = str(document.get("document_id", "unknown"))
         doc_type = str(document.get("document_type", "unknown"))
+        document_label = document.get("source_label") or _display_document_type(doc_type)
         for index, entity in enumerate(document.get("entities", [])):
             entity_type = entity.get("entity_type")
             if not entity_type or entity_type not in CUSDEC_FIELDS:
@@ -90,7 +92,8 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
                 "assertion_id": assertion_id,
                 "document_id": doc_id,
                 "document_type": doc_type,
-                "document_label": _display_document_type(doc_type),
+                "document_label": document_label,
+                "source_filename": document.get("source_filename"),
                 "entity_type": entity_type,
                 "raw_value": str(entity.get("value", "")),
                 "normalized_value": entity.get("normalized_value", entity.get("value", "")),

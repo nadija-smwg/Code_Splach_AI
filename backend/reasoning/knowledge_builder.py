@@ -31,6 +31,7 @@ class KnowledgeBuilder:
                             node_type="source_assertion", entity_type=assertion["entity_type"],
                             value=assertion["normalized_value"], raw_value=assertion["raw_value"],
                             source_doc=assertion["document_id"], bbox=assertion.get("bbox", []),
+                            source_doc_label=assertion["document_label"], source_doc_type=assertion["document_type"],
                             page=assertion.get("page", 1), extraction_confidence=assertion.get("extraction_confidence", 0.0),
                             ocr_text=assertion.get("ocr_text", ""), is_outlier=assertion.get("is_outlier", False),
                             label=f"{assertion['document_label']}: {assertion['raw_value']}")

@@ -23,6 +23,19 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 DEMO_IDS = {"demo-shipment", "demo"}
 
+DOCUMENT_LABELS = {
+    "commercial_invoice": "Commercial Invoice",
+    "packing_list": "Packing List",
+    "awb": "Air Waybill",
+    "bl": "Bill of Lading",
+    "freight_invoice": "Freight Invoice",
+    "delivery_order": "Delivery Order",
+}
+
+
+def _document_label(document_type: str) -> str:
+    return DOCUMENT_LABELS.get(document_type, document_type.replace("_", " ").title())
+
 
 def _is_demo(shipment_id: str) -> bool:
     """Return True for known demo/test fixture IDs."""
@@ -80,6 +93,9 @@ def _fetch_dossier_documents(shipment_id: str):
                 extraction["document_type"] = (
                     doc.document_type or extraction.get("document_type", "unknown")
                 )
+                extraction["source_filename"] = doc.original_name
+                type_label = _document_label(extraction["document_type"])
+                extraction["source_label"] = f"{type_label} — {doc.original_name}"
                 results.append(extraction)
 
             return results if results else None
@@ -100,7 +116,13 @@ def _get_demo_documents() -> list:
         ("demo/packing_list.pdf",       "doc_002"),
         ("demo/awb.pdf",                "doc_003"),
     ]
-    return [mp.process_document(path, doc_id) for path, doc_id in demo_docs]
+    results = []
+    for path, doc_id in demo_docs:
+        document = mp.process_document(path, doc_id)
+        document["source_filename"] = os.path.basename(path)
+        document["source_label"] = _document_label(document["document_type"])
+        results.append(document)
+    return results
 
 
 def _get_documents_for_shipment(shipment_id: str) -> list:
@@ -361,6 +383,7 @@ async def get_discrepancies(shipment_id: str):
         discrepancies.append({
             "discrepancy_id": f"{f.rule_id}_{f.node_a_id}_{f.node_b_id}",
             "field": f.entity_type,
+            "field_label": f.entity_type.replace("_", " ").title(),
             "canonical_field_id": f.canonical_field_id,
             "rule_id": f.rule_id,
             "severity": "high" if "NUMERIC" in f.rule_id else "medium",
@@ -369,6 +392,19 @@ async def get_discrepancies(shipment_id: str):
             "value_a": str(f.value_a),
             "value_b": str(f.value_b),
             "delta": f.delta,
+            "sources": [
+                {
+                    "document_id": graph.nodes[node_id].get("source_doc", ""),
+                    "document_label": graph.nodes[node_id].get("source_doc_label", "Unknown document"),
+                    "document_type": graph.nodes[node_id].get("source_doc_type", "unknown"),
+                    "raw_value": graph.nodes[node_id].get("raw_value", ""),
+                    "normalized_value": graph.nodes[node_id].get("value", ""),
+                    "page": graph.nodes[node_id].get("page", 1),
+                    "bbox": graph.nodes[node_id].get("bbox", []),
+                    "extraction_confidence": graph.nodes[node_id].get("extraction_confidence", 0.0),
+                }
+                for node_id in (f.node_a_id, f.node_b_id)
+            ],
             "xai_block": dataclasses.asdict(xai_block),
         })
 

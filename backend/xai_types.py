@@ -27,6 +27,7 @@ class XAILayer1_Provenance:
     source_documents: List[str] = field(default_factory=list)
     ocr_snippets: List[str] = field(default_factory=list)
     bboxes: List[List[int]] = field(default_factory=list)
+    source_document_ids: List[str] = field(default_factory=list)
 
 @dataclass
 class XAILayer2_ReasoningChain:
