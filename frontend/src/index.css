@@ -103,3 +103,19 @@ html, body {
 
 .animate-bounce-in { animation: bounce-in 0.3s ease; }
 .animate-spin { animation: spin 1s linear infinite; }
+
+/* ── Prevent horizontal overflow from parallax transforms ── */
+html, body {
+  overflow-x: hidden;
+}
+
+/* ── Respect prefers-reduced-motion system preference ────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
