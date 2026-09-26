@@ -1,4 +1,4 @@
-from reasoning.entity_resolution import resolve_documents
+from reasoning.entity_resolution import apply_manual_resolutions, resolve_documents
 
 
 def _document(document_id, document_type, entities):
@@ -81,3 +81,24 @@ def test_legacy_bank_value_is_excluded_using_saved_ocr_evidence():
     field = next(item for item in fields if item["entity_type"] == "CONSIGNEE_NAME")
     assert field["status"] == "pending"
     assert len(field["assertions"]) == 1
+
+
+def test_manual_resolution_replaces_consensus_but_preserves_source_assertions():
+    fields = resolve_documents("shipment-1", [
+        _document("invoice", "commercial_invoice", [_entity("GROSS_WEIGHT", "450.00 KG", 450.0)]),
+        _document("awb", "awb", [_entity("GROSS_WEIGHT", "448.50 KG", 448.5)]),
+    ])
+    field = fields[0]
+    resolved = apply_manual_resolutions(fields, {
+        field["canonical_field_id"]: {
+            "resolved_value": 448.5,
+            "source_assertion_id": field["assertions"][1]["assertion_id"],
+            "reason": "Verified against the signed air waybill.",
+            "resolved_by": "reviewer",
+        },
+    })[0]
+
+    assert resolved["status"] == "resolved"
+    assert resolved["consensus_value"] == 448.5
+    assert len(resolved["assertions"]) == 2
+    assert resolved["assertions"][1]["is_consensus"] is True

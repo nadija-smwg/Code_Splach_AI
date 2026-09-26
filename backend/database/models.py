@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
@@ -119,4 +119,21 @@ class DossierDocument(Base):
     extraction_json = Column(JSONB)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class FieldResolution(Base):
+    """A reviewer-approved override for one canonical shipment field."""
+    __tablename__ = 'field_resolutions'
+    __table_args__ = (UniqueConstraint('shipment_id', 'canonical_field_id', name='uq_field_resolution'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shipment_id = Column(String(100), nullable=False)
+    canonical_field_id = Column(String(255), nullable=False)
+    entity_type = Column(String(50), nullable=False)
+    resolved_value = Column(JSONB, nullable=False)
+    source_assertion_id = Column(String(255))
+    reason = Column(Text)
+    resolved_by = Column(String(100), nullable=False, default='reviewer')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

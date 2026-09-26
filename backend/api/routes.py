@@ -135,6 +135,39 @@ def _get_documents_for_shipment(shipment_id: str) -> list:
     return real if real is not None else []
 
 
+def _get_field_resolutions(shipment_id: str) -> dict:
+    """Load reviewer decisions keyed by canonical field ID."""
+    try:
+        from database.connection import SessionLocal
+        from database.models import FieldResolution
+
+        db = SessionLocal()
+        try:
+            rows = db.query(FieldResolution).filter(FieldResolution.shipment_id == shipment_id).all()
+            return {
+                row.canonical_field_id: {
+                    "resolved_value": row.resolved_value,
+                    "source_assertion_id": row.source_assertion_id,
+                    "reason": row.reason,
+                    "resolved_by": row.resolved_by,
+                }
+                for row in rows
+            }
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("Could not load field resolutions for %s: %s", shipment_id, exc)
+        return {}
+
+
+def _resolve_shipment_fields(shipment_id: str, documents: list) -> list:
+    """Resolve source assertions, then apply persisted reviewer decisions."""
+    from reasoning.entity_resolution import apply_manual_resolutions, resolve_documents
+
+    fields = resolve_documents(shipment_id, documents)
+    return apply_manual_resolutions(fields, _get_field_resolutions(shipment_id))
+
+
 # ══════════════════════════════════════════════════════════════════
 # HELPERS — Knowledge Graph Building
 # ══════════════════════════════════════════════════════════════════
@@ -148,7 +181,6 @@ def _build_graph_from_documents(shipment_id: str, documents: list):
     Returns (KnowledgeBuilder, documents).
     """
     from reasoning.knowledge_builder import KnowledgeBuilder
-    from reasoning.entity_resolution import resolve_documents
 
     kb = KnowledgeBuilder()
     kb.add_shipment_node(shipment_id)
@@ -156,7 +188,7 @@ def _build_graph_from_documents(shipment_id: str, documents: list):
     for doc in documents:
         kb.add_document_node(doc["document_id"], doc.get("document_type", "unknown"))
 
-    for field in resolve_documents(shipment_id, documents):
+    for field in _resolve_shipment_fields(shipment_id, documents):
         kb.add_canonical_field_node(field, shipment_id)
         for assertion in field["assertions"]:
             kb.add_source_assertion_node(assertion)
@@ -349,16 +381,85 @@ async def get_knowledge_graph(shipment_id: str):
 @router.get("/shipments/{shipment_id}/key-fields")
 async def get_key_fields(shipment_id: str):
     """Return canonical shipment fields with every document assertion."""
-    from reasoning.entity_resolution import resolve_documents
-
-    fields = resolve_documents(shipment_id, _get_documents_for_shipment(shipment_id))
+    fields = _resolve_shipment_fields(shipment_id, _get_documents_for_shipment(shipment_id))
     counts = {status: sum(field["status"] == status for field in fields)
-              for status in ("match", "conflict", "warning", "pending")}
+              for status in ("match", "conflict", "warning", "pending", "resolved")}
     return {
         "shipment_id": shipment_id,
         "summary": {"total_fields": len(fields), **counts},
         "fields": fields,
     }
+
+
+@router.post("/shipments/{shipment_id}/field-resolutions")
+async def save_field_resolution(shipment_id: str, resolution: dict):
+    """Persist a reviewer-selected source value or a verified manual value."""
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
+
+    canonical_field_id = str(resolution.get("canonical_field_id", "")).strip()
+    if not canonical_field_id:
+        raise HTTPException(status_code=400, detail="canonical_field_id is required.")
+
+    # Validate against unmodified source evidence. Existing overrides must not
+    # be the sole evidence for a subsequent decision.
+    from reasoning.entity_resolution import resolve_documents
+    source_fields = resolve_documents(shipment_id, documents)
+    field = next((item for item in source_fields if item["canonical_field_id"] == canonical_field_id), None)
+    if field is None:
+        raise HTTPException(status_code=404, detail="The selected canonical field was not found.")
+
+    source_assertion_id = str(resolution.get("source_assertion_id", "")).strip() or None
+    if source_assertion_id:
+        assertion = next(
+            (item for item in field["assertions"] if item["assertion_id"] == source_assertion_id), None
+        )
+        if assertion is None:
+            raise HTTPException(status_code=400, detail="The selected source assertion does not belong to this field.")
+        resolved_value = assertion["normalized_value"]
+    else:
+        manual_value = resolution.get("manual_value")
+        if manual_value in (None, ""):
+            raise HTTPException(status_code=400, detail="Choose a source value or enter a corrected value.")
+        from ai_pipeline.normalizer import EntityNormalizer
+        normalized = EntityNormalizer().normalize(field["entity_type"], str(manual_value))
+        resolved_value = normalized.get("normalized_value")
+        if resolved_value in (None, ""):
+            raise HTTPException(status_code=400, detail="The corrected value could not be validated.")
+
+    reason = str(resolution.get("reason", "")).strip()[:1000] or None
+    try:
+        from database.connection import SessionLocal
+        from database.models import FieldResolution
+
+        db = SessionLocal()
+        try:
+            row = db.query(FieldResolution).filter(
+                FieldResolution.shipment_id == shipment_id,
+                FieldResolution.canonical_field_id == canonical_field_id,
+            ).first()
+            if row is None:
+                row = FieldResolution(
+                    shipment_id=shipment_id,
+                    canonical_field_id=canonical_field_id,
+                    entity_type=field["entity_type"],
+                )
+                db.add(row)
+            row.resolved_value = resolved_value
+            row.source_assertion_id = source_assertion_id
+            row.reason = reason
+            row.resolved_by = "reviewer"
+            db.commit()
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.exception("Could not save field resolution for %s", shipment_id)
+        raise HTTPException(status_code=503, detail="The resolution could not be saved.") from exc
+
+    resolved_fields = _resolve_shipment_fields(shipment_id, documents)
+    saved = next(item for item in resolved_fields if item["canonical_field_id"] == canonical_field_id)
+    return {"status": "resolved", "field": saved}
 
 
 @router.get("/shipments/{shipment_id}/discrepancies")
@@ -444,9 +545,8 @@ async def export_asycuda(shipment_id: str):
         raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
 
     from reasoning.cusdec_readiness import build_cusdec_readiness
-    from reasoning.entity_resolution import resolve_documents
 
-    readiness = build_cusdec_readiness(documents, resolve_documents(shipment_id, documents))
+    readiness = build_cusdec_readiness(documents, _resolve_shipment_fields(shipment_id, documents))
     if not readiness["export_allowed"]:
         raise HTTPException(
             status_code=422,
@@ -473,9 +573,8 @@ async def get_cusdec_readiness(shipment_id: str):
         raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
 
     from reasoning.cusdec_readiness import build_cusdec_readiness
-    from reasoning.entity_resolution import resolve_documents
 
-    fields = resolve_documents(shipment_id, documents)
+    fields = _resolve_shipment_fields(shipment_id, documents)
     return {
         "shipment_id": shipment_id,
         **build_cusdec_readiness(documents, fields),
@@ -574,5 +673,9 @@ async def get_active_rules():
 
 @router.post('/shipments/{shipment_id}/discrepancies/{discrepancy_id}/resolve')
 async def resolve_discrepancy(shipment_id: str, discrepancy_id: str, decision: dict):
-    return {'status': 'resolved'}
+    del shipment_id, discrepancy_id, decision
+    raise HTTPException(
+        status_code=410,
+        detail="Use the field-resolution workflow to select source evidence or enter a corrected value.",
+    )
 

@@ -191,3 +191,30 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
             "assertions": assertions,
         })
     return sorted(resolved, key=lambda field: (field["status"] != "conflict", field["label"]))
+
+
+def apply_manual_resolutions(
+    fields: list[dict[str, Any]], resolutions: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Overlay saved reviewer decisions without altering source evidence.
+
+    The underlying assertions remain available for audit. A resolved field is
+    no longer a graph conflict and can progress through the CUSDEC readiness
+    check, subject to all other required declaration checks.
+    """
+    for field in fields:
+        resolution = resolutions.get(field["canonical_field_id"])
+        if not resolution:
+            continue
+        field["consensus_value"] = resolution["resolved_value"]
+        field["status"] = "resolved"
+        field["resolution"] = {
+            "source_assertion_id": resolution.get("source_assertion_id"),
+            "reason": resolution.get("reason"),
+            "resolved_by": resolution.get("resolved_by", "reviewer"),
+        }
+        selected_assertion = resolution.get("source_assertion_id")
+        for assertion in field["assertions"]:
+            assertion["is_consensus"] = assertion["assertion_id"] == selected_assertion if selected_assertion else False
+            assertion["is_outlier"] = False
+    return fields
