@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ShipmentProvider } from './hooks/useShipment';
 
@@ -29,10 +29,10 @@ function AppInner() {
   const location = useLocation();
   const isOverview = location.pathname === '/';
 
-  const showToast = (toastObj: Toast) => {
+  const showToast = useCallback((toastObj: Toast) => {
     setToast(toastObj);
     setTimeout(() => setToast(null), 4000);
-  };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-background font-sans text-on-surface antialiased">

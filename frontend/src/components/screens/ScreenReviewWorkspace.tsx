@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useShipment } from '../../hooks/useShipment';
 import { getDiscrepancies, getExtraction, getKeyFields, saveFieldResolution } from '../../utils/api';
@@ -10,6 +10,7 @@ interface Props { onTriggerToast: (t: { title: string; message: string; type?: '
 export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
   const navigate = useNavigate();
   const { shipmentId } = useShipment();
+  const latestToast = useRef(onTriggerToast);
   
   const [extractions, setExtractions] = useState<DocumentExtraction[]>([]);
   const [keyFields, setKeyFields] = useState<ResolvedKeyField[]>([]);
@@ -21,6 +22,10 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
   const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([]);
 
   const [resolvingFieldId, setResolvingFieldId] = useState<string | null>(null);
+
+  useEffect(() => {
+    latestToast.current = onTriggerToast;
+  }, [onTriggerToast]);
 
   useEffect(() => {
     if (!shipmentId) {
@@ -48,12 +53,14 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
     })
     .catch((err) => {
       console.error("Failed to load workspace data", err);
-      onTriggerToast({ title: 'Error', message: 'Failed to load workspace data.', type: 'error' });
+      latestToast.current({ title: 'Error', message: 'Failed to load workspace data.', type: 'error' });
     })
     .finally(() => {
       setLoading(false);
     });
-  }, [shipmentId, onTriggerToast]);
+  // Toast visibility must not reload this workspace. The callback is stable in
+  // App, but the data set is intentionally keyed only to the active dossier.
+  }, [shipmentId]);
 
   if (!shipmentId) {
     return (
