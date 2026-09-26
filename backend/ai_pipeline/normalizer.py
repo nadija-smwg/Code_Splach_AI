@@ -159,7 +159,10 @@ class EntityNormalizer:
                 }
 
             # NUMERIC AMOUNT ────────────────────────────────────────────
-            if entity_type in {"TOTAL_AMOUNT", "UNIT_PRICE", "TOTAL_PRICE"}:
+            if entity_type in {
+                "TOTAL_AMOUNT", "UNIT_PRICE", "TOTAL_PRICE", "FREIGHT_AMOUNT",
+                "INSURANCE_AMOUNT",
+            }:
                 number = self._normalize_number(raw_value)
                 return {
                     "normalized_value": number,

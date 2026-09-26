@@ -6,7 +6,6 @@
 # - Unknown IDs / DB unavailable          → fall back to demo
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import Response
 from typing import List
 import uuid, os, dataclasses, logging
 
@@ -434,21 +433,53 @@ async def get_audit_trail(shipment_id: str):
 
 @router.get("/shipments/{shipment_id}/asycuda-export")
 async def export_asycuda(shipment_id: str):
-    from reasoning.asycuda_export import generate_cusdec_xml
+    """Export only a declaration that passed the CUSDEC readiness gate.
 
-    try:
-        kb, _ = _get_graph_for_shipment(shipment_id)
-        xml = generate_cusdec_xml(kb.get_graph(), shipment_id)
-    except Exception as e:
-        logger.warning("ASYCUDA export failed, falling back to demo: %s", e)
-        from reasoning.asycuda_export import generate_demo_cusdec_xml
-        xml = generate_demo_cusdec_xml(shipment_id)
+    A valid HTTP response must never contain fabricated declaration data.  The
+    official ASYCUDA serializer is deliberately not enabled until its message
+    schema is configured and validated.
+    """
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
 
-    return Response(
-        content=xml,
-        media_type="application/xml",
-        headers={"Content-Disposition": f"attachment; filename=CUSDEC_{shipment_id[:8]}.xml"},
+    from reasoning.cusdec_readiness import build_cusdec_readiness
+    from reasoning.entity_resolution import resolve_documents
+
+    readiness = build_cusdec_readiness(documents, resolve_documents(shipment_id, documents))
+    if not readiness["export_allowed"]:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "CUSDEC export is blocked until all readiness checks pass.",
+                "readiness": readiness,
+            },
+        )
+
+    # This path is unreachable until an approved schema validator is added to
+    # the readiness gate. Keep an explicit response instead of silently
+    # emitting the former demo-shaped XML.
+    raise HTTPException(
+        status_code=501,
+        detail="An official ASYCUDA XML serializer has not been configured for this environment.",
     )
+
+
+@router.get("/shipments/{shipment_id}/cusdec-readiness")
+async def get_cusdec_readiness(shipment_id: str):
+    """Return field-level blockers before the user attempts an export."""
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
+
+    from reasoning.cusdec_readiness import build_cusdec_readiness
+    from reasoning.entity_resolution import resolve_documents
+
+    fields = resolve_documents(shipment_id, documents)
+    return {
+        "shipment_id": shipment_id,
+        **build_cusdec_readiness(documents, fields),
+    }
 
 
 # ══════════════════════════════════════════════════════════════════

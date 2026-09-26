@@ -13,22 +13,34 @@ from typing import Any
 from ai_pipeline.party_roles import classify_party_role
 
 
-# These are the extracted values used by generate_cusdec_xml().  The resolver
-# deliberately excludes operational/display-only fields from reconciliation so
-# the graph and review workspace focus on declaration readiness.
+# These are the shipment-level values available to the CUSDEC readiness check.
+# Source assertions stay in the graph, while this set defines which extracted
+# values can influence a declaration draft. Do not silently add display-only
+# fields here: every field in this set must have a declaration purpose.
 CUSDEC_FIELDS = {
-    "CONSIGNEE_NAME", "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT",
-    "AWB_NUMBER", "BL_NUMBER", "INCOTERM", "TOTAL_AMOUNT",
-    "INVOICE_NUMBER", "CURRENCY_CODE",
+    "CONSIGNEE_NAME", "CONSIGNEE_ADDRESS", "SHIPPER_NAME",
+    "GROSS_WEIGHT", "NET_WEIGHT", "PACKAGE_COUNT", "AWB_NUMBER",
+    "BL_NUMBER", "INCOTERM", "TOTAL_AMOUNT", "INVOICE_NUMBER",
+    "CURRENCY_CODE", "PAYMENT_TERMS", "COUNTRY_OF_ORIGIN",
+    "PORT_OF_LOADING", "PORT_OF_DISCHARGE", "VESSEL_NAME",
+    "FLIGHT_NUMBER", "ORIGIN", "DESTINATION", "FREIGHT_AMOUNT",
+    "INSURANCE_AMOUNT", "CONTAINER_NUMBER", "SHIPPING_MARKS", "HS_CODE",
 }
 
 FIELD_LABELS = {
     "GROSS_WEIGHT": "Gross Weight", "NET_WEIGHT": "Net Weight",
     "PACKAGE_COUNT": "Package Count", "CONSIGNEE_NAME": "Consignee Name",
-    "SHIPPER_NAME": "Shipper Name", "INCOTERM": "Incoterm",
+    "CONSIGNEE_ADDRESS": "Consignee Address", "SHIPPER_NAME": "Shipper Name",
+    "INVOICE_NUMBER": "Invoice Number", "PAYMENT_TERMS": "Payment Terms",
+    "AWB_NUMBER": "Air Waybill Number", "BL_NUMBER": "Bill of Lading Number",
+    "HS_CODE": "HS Code", "INCOTERM": "Incoterm",
     "COUNTRY_OF_ORIGIN": "Country of Origin", "PORT_OF_LOADING": "Port of Loading",
     "PORT_OF_DISCHARGE": "Port of Discharge", "TOTAL_AMOUNT": "Total Amount",
-    "CURRENCY_CODE": "Currency",
+    "CURRENCY_CODE": "Currency", "FREIGHT_AMOUNT": "Freight Amount",
+    "INSURANCE_AMOUNT": "Insurance Amount", "VESSEL_NAME": "Vessel Name",
+    "FLIGHT_NUMBER": "Flight Number", "ORIGIN": "Origin",
+    "DESTINATION": "Destination", "CONTAINER_NUMBER": "Container Number",
+    "SHIPPING_MARKS": "Shipping Marks",
 }
 
 
