@@ -151,3 +151,22 @@ class DeclarationMetadata(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+
+class CusdecLineItem(Base):
+    """A reviewer-entered goods row with its document reference retained."""
+    __tablename__ = 'cusdec_line_items'
+    __table_args__ = (UniqueConstraint('shipment_id', 'row_index', name='uq_cusdec_line_item'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shipment_id = Column(String(100), nullable=False)
+    row_index = Column(Integer, nullable=False)
+    description = Column(Text, nullable=False)
+    quantity = Column(Float, nullable=False)
+    unit = Column(String(50), nullable=False)
+    unit_price = Column(Float, nullable=False)
+    total_price = Column(Float, nullable=False)
+    source_reference = Column(Text, nullable=False)
+    verified_by = Column(String(100), nullable=False, default='reviewer')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+

@@ -77,3 +77,16 @@ def test_reviewer_declaration_metadata_satisfies_profile_requirements():
 
     assert not any(blocker["code"] == "MISSING_DECLARATION_METADATA" for blocker in readiness["blockers"])
     assert readiness["profile"]["consignee_code"] == "verified-consignee_code"
+
+
+def test_verified_line_item_satisfies_goods_row_requirement():
+    document = _complete_document()
+    document.pop("line_items")
+    readiness = build_cusdec_readiness(
+        [document],
+        _complete_fields(),
+        {key: f"verified-{key}" for key in PROFILE_REQUIREMENTS},
+        [{"description": "Cotton fabric", "quantity": 10, "source_reference": "Invoice p. 1"}],
+    )
+
+    assert not any(blocker["code"] == "MISSING_LINE_ITEMS" for blocker in readiness["blockers"])

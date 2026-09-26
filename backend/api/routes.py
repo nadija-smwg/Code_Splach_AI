@@ -179,6 +179,34 @@ def _get_declaration_metadata(shipment_id: str) -> dict:
         return {}
 
 
+def _get_verified_line_items(shipment_id: str) -> list[dict]:
+    """Load reviewer-entered goods rows and their source references."""
+    try:
+        from database.connection import SessionLocal
+        from database.models import CusdecLineItem
+
+        db = SessionLocal()
+        try:
+            rows = db.query(CusdecLineItem).filter(
+                CusdecLineItem.shipment_id == shipment_id
+            ).order_by(CusdecLineItem.row_index).all()
+            return [{
+                "row_index": row.row_index,
+                "description": row.description,
+                "quantity": row.quantity,
+                "unit": row.unit,
+                "unit_price": row.unit_price,
+                "total_price": row.total_price,
+                "source_reference": row.source_reference,
+                "verified_by": row.verified_by,
+            } for row in rows]
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("Could not load verified line items for %s: %s", shipment_id, exc)
+        return []
+
+
 def _resolve_shipment_fields(shipment_id: str, documents: list) -> list:
     """Resolve source assertions, then apply persisted reviewer decisions."""
     from reasoning.entity_resolution import apply_manual_resolutions, resolve_documents
@@ -543,6 +571,76 @@ async def save_declaration_metadata(shipment_id: str, payload: dict):
     }
 
 
+@router.post("/shipments/{shipment_id}/cusdec-line-items")
+async def save_cusdec_line_item(shipment_id: str, item: dict):
+    """Save one source-referenced goods row when automatic table extraction is unavailable."""
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
+
+    description = str(item.get("description", "")).strip()
+    unit = str(item.get("unit", "")).strip()
+    source_reference = str(item.get("source_reference", "")).strip()
+    if not description or not unit or not source_reference:
+        raise HTTPException(
+            status_code=400,
+            detail="Description, unit, and source document reference are required.",
+        )
+    if len(description) > 1000 or len(unit) > 50 or len(source_reference) > 500:
+        raise HTTPException(status_code=400, detail="One or more line-item values are too long.")
+    try:
+        quantity = float(item.get("quantity"))
+        unit_price = float(item.get("unit_price"))
+        total_price = float(item.get("total_price"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Quantity, unit price, and total price must be numbers.")
+    if quantity <= 0 or unit_price < 0 or total_price <= 0:
+        raise HTTPException(status_code=400, detail="Quantity and total price must be positive; unit price cannot be negative.")
+    if abs(quantity * unit_price - total_price) > max(total_price * 0.02, 0.01):
+        raise HTTPException(status_code=400, detail="Total price must match quantity × unit price within 2%.")
+
+    try:
+        from database.connection import SessionLocal
+        from database.models import CusdecLineItem
+
+        db = SessionLocal()
+        try:
+            last_row = db.query(CusdecLineItem.row_index).filter(
+                CusdecLineItem.shipment_id == shipment_id
+            ).order_by(CusdecLineItem.row_index.desc()).first()
+            row = CusdecLineItem(
+                shipment_id=shipment_id,
+                row_index=(last_row[0] if last_row else 0) + 1,
+                description=description,
+                quantity=quantity,
+                unit=unit,
+                unit_price=unit_price,
+                total_price=total_price,
+                source_reference=source_reference,
+                verified_by="reviewer",
+            )
+            db.add(row)
+            db.commit()
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.exception("Could not save CUSDEC line item for %s", shipment_id)
+        raise HTTPException(status_code=503, detail="The goods line item could not be saved.") from exc
+
+    from reasoning.cusdec_readiness import build_cusdec_readiness
+    fields = _resolve_shipment_fields(shipment_id, documents)
+    return {
+        "status": "saved",
+        "line_items": _get_verified_line_items(shipment_id),
+        "readiness": build_cusdec_readiness(
+            documents,
+            fields,
+            _get_declaration_metadata(shipment_id),
+            _get_verified_line_items(shipment_id),
+        ),
+    }
+
+
 @router.get("/shipments/{shipment_id}/discrepancies")
 async def get_discrepancies(shipment_id: str):
     from reasoning.rule_evaluator import RuleEvaluator
@@ -631,6 +729,7 @@ async def export_asycuda(shipment_id: str):
         documents,
         _resolve_shipment_fields(shipment_id, documents),
         _get_declaration_metadata(shipment_id),
+        _get_verified_line_items(shipment_id),
     )
     if not readiness["export_allowed"]:
         raise HTTPException(
@@ -662,7 +761,12 @@ async def get_cusdec_readiness(shipment_id: str):
     fields = _resolve_shipment_fields(shipment_id, documents)
     return {
         "shipment_id": shipment_id,
-        **build_cusdec_readiness(documents, fields, _get_declaration_metadata(shipment_id)),
+        **build_cusdec_readiness(
+            documents,
+            fields,
+            _get_declaration_metadata(shipment_id),
+            _get_verified_line_items(shipment_id),
+        ),
     }
 
 

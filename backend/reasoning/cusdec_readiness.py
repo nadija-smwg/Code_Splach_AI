@@ -67,7 +67,11 @@ def _profile(documents: list[dict[str, Any]], declaration_metadata: dict[str, An
     return profile
 
 
-def _has_line_items(documents: list[dict[str, Any]]) -> bool:
+def _has_line_items(documents: list[dict[str, Any]], verified_line_items: list[dict[str, Any]] | None = None) -> bool:
+    if verified_line_items and any(
+        isinstance(item, dict) and item.get("description") for item in verified_line_items
+    ):
+        return True
     for document in documents:
         items = document.get("line_items") or document.get("items")
         if isinstance(items, list) and any(isinstance(item, dict) and item.get("description") for item in items):
@@ -86,6 +90,7 @@ def build_cusdec_readiness(
     documents: list[dict[str, Any]],
     fields: list[dict[str, Any]],
     declaration_metadata: dict[str, Any] | None = None,
+    verified_line_items: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Return a UI-safe and API-safe submission readiness assessment."""
     blockers: list[dict[str, str]] = []
@@ -119,7 +124,7 @@ def build_cusdec_readiness(
     if not (resolved.get("AWB_NUMBER") or resolved.get("BL_NUMBER")):
         blockers.append(_issue("MISSING_TRANSPORT_DOCUMENT", "transport_document", "An AWB or bill of lading is required."))
 
-    if not _has_line_items(documents):
+    if not _has_line_items(documents, verified_line_items):
         blockers.append(_issue(
             "MISSING_LINE_ITEMS", "line_items",
             "No extracted goods line items are available for commodity and valuation validation.",
@@ -147,5 +152,6 @@ def build_cusdec_readiness(
         "resolved_field_count": len(fields),
         "required_extracted_field_count": len(EXTRACTED_REQUIREMENTS),
         "profile": {key: profile.get(key) for key in PROFILE_REQUIREMENTS if profile.get(key) not in (None, "")},
+        "line_items": verified_line_items or [],
         "notice": "Exports are blocked until source evidence, declaration metadata, and official ASYCUDA schema validation are complete.",
     }
