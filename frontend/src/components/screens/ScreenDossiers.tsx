@@ -1,6 +1,6 @@
-import { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
+import { useState, useRef, useEffect, type DragEvent, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { uploadShipment } from '../../utils/api';
+import { uploadShipment, getActiveRules, type RuleCheck } from '../../utils/api';
 import { useShipment } from '../../hooks/useShipment';
 
 interface Props { onTriggerToast: (t: { title: string; message: string; type?: 'error' | 'info' | 'success' }) => void; }
@@ -31,6 +31,12 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileStack, setFileStack] = useState<QueuedFile[]>([]);
   const [progress, setProgress] = useState(0);
+  const [activeChecks, setActiveChecks] = useState<RuleCheck[]>([]);
+  const [isLoadingChecks, setIsLoadingChecks] = useState(true);
+
+  useEffect(() => {
+    getActiveRules().then(setActiveChecks).catch(() => {}).finally(() => setIsLoadingChecks(false));
+  }, []);
 
   const addFiles = (incoming: File[]) => {
     const pdfs = incoming.filter(f => f.name.toLowerCase().endsWith('.pdf'));
@@ -61,10 +67,6 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
 
   const handleBrowse = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) addFiles(Array.from(e.target.files));
-  };
-
-  const loadSampleDossier = () => {
-    onTriggerToast({ title: 'Sample Dossier Loaded', message: 'Upload the demo PDFs from the /demo folder to test.' });
   };
 
   const handleProcessDossier = async () => {
@@ -175,13 +177,6 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
           >
             <span className="material-symbols-outlined text-[16px]">folder_open</span> Browse Files
           </button>
-          <button
-            onClick={loadSampleDossier}
-            className="bg-surface-container-low hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shadow-sm"
-          >
-            <span className="material-symbols-outlined text-secondary text-[16px]">auto_stories</span>
-            Load Sample Dossier
-          </button>
         </div>
       </div>
 
@@ -204,23 +199,22 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
             </span>
           </div>
           <div className="space-y-2 text-xs">
-            {[
-              { label: 'HS Code Concordance', desc: 'Cotton apparel harmonized between Commercial Invoice and AWB cargo description.' },
-              { label: 'Incoterms & Apportionment', desc: 'Ocean freight breakdown mapped without duty base variance (CIF Colombo).' },
-              { label: 'TIN/EORI Registry', desc: 'Declarant TIN validated with Inland Revenue Department.' },
-              { label: 'Weight Tolerance Check', desc: 'Cross-document weight comparison queued for Rule Evaluator.' },
-            ].map((item) => (
-              <div key={item.label} className="bg-surface-container-low rounded-lg p-3 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
-                  <div>
-                    <div className="font-semibold text-on-surface">{item.label}</div>
-                    <p className="text-on-surface-variant mt-0.5">{item.desc}</p>
+            {isLoadingChecks ? (
+              <div className="p-3 text-on-surface-variant animate-pulse">Loading checks from backend...</div>
+            ) : (
+              activeChecks.map((item) => (
+                <div key={item.id} className="bg-surface-container-low rounded-lg p-3 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2">
+                    <span className="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
+                    <div>
+                      <div className="font-semibold text-on-surface">{item.label}</div>
+                      <p className="text-on-surface-variant mt-0.5">{item.description}</p>
+                    </div>
                   </div>
+                  <span className="text-secondary font-semibold bg-secondary-container/20 px-2 py-0.5 rounded shrink-0">{item.status}</span>
                 </div>
-                <span className="text-secondary font-semibold bg-secondary-container/20 px-2 py-0.5 rounded shrink-0">Ready</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
