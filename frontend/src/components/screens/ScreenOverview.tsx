@@ -39,11 +39,11 @@ function statusBadge(status: string) {
 function channelBadge(channel: string) {
   switch (channel) {
     case 'green':
-      return { label: 'Green Lane', bg: 'bg-green-500/15', text: 'text-green-400', dot: 'bg-green-400' };
+      return { label: 'Ready', bg: 'bg-green-500/15', text: 'text-green-400', dot: 'bg-green-400' };
     case 'review':
-      return { label: 'Under Review', bg: 'bg-amber-500/15', text: 'text-amber-400', dot: 'bg-amber-400' };
+      return { label: 'Needs review', bg: 'bg-amber-500/15', text: 'text-amber-400', dot: 'bg-amber-400' };
     case 'hold':
-      return { label: 'Customs Hold', bg: 'bg-red-500/15', text: 'text-red-400', dot: 'bg-red-400' };
+      return { label: 'Blocked', bg: 'bg-red-500/15', text: 'text-red-400', dot: 'bg-red-400' };
     default:
       return { label: 'Queued', bg: 'bg-gray-500/15', text: 'text-gray-400', dot: 'bg-gray-400' };
   }
@@ -142,8 +142,8 @@ export function ScreenOverview({ onTriggerToast }: Props) {
     const next = currentChannel === 'green' ? 'review' : 'green';
     setChannelOverrides(prev => ({ ...prev, [dossierId]: next }));
     onTriggerToast({
-      title: 'Clearance Channel Updated',
-      message: `Dossier ${dossierId.slice(0, 8)}... → ${next === 'green' ? 'Green Lane' : 'Under Review'}.`,
+      title: 'Review status updated',
+      message: `Dossier ${dossierId.slice(0, 8)}... is ${next === 'green' ? 'ready' : 'marked for review'}.`,
       type: next === 'green' ? 'success' : 'info',
     });
   };
@@ -397,7 +397,7 @@ export function ScreenOverview({ onTriggerToast }: Props) {
                             onMouseLeave={onBtnLeave}
                             onClick={(e) => { onBtnClick(e); toggleChannel(d.dossier_id, channel); }}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold cursor-pointer transition-opacity ${cb.bg} ${cb.text}`}
-                            title="Click to toggle clearance channel"
+                            title="Change review status"
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${cb.dot}`} />
                             {cb.label}
@@ -428,10 +428,10 @@ export function ScreenOverview({ onTriggerToast }: Props) {
               className="p-3 flex flex-col sm:flex-row items-center justify-between text-xs text-outline"
               style={{ borderTop: `1px solid ${NAVY}15`, background: `${NAVY}05` }}
             >
-              <span>Showing {dossiers.length} consignment{dossiers.length !== 1 ? 's' : ''}</span>
+              <span>Showing {dossiers.length} dossier{dossiers.length !== 1 ? 's' : ''}</span>
               <div className="flex items-center gap-1.5 text-emerald-500">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Pipeline Active</span>
+                <span>Review workspace</span>
               </div>
             </div>
           </>
