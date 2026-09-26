@@ -8,7 +8,7 @@ const primaryNavItems = [
   { path: '/discrepancies', label: 'Discrepancies' },
   { path: '/knowledge-graph', label: 'Knowledge Graph' },
   { path: '/batch-filing', label: 'Batch Filing' },
-  { path: '/asycuda-gateway', label: 'ASYCUDA Gateway' },
+  { path: '/asycuda-gateway', label: 'CUSDEC Export' },
   { path: '/audit-trail', label: 'Audit Trail' },
   { path: '/tariff-directory', label: 'Tariff Directory' },
 ];
@@ -59,37 +59,13 @@ export function Header() {
                   ? 'text-emerald-300 bg-emerald-400/10 border border-emerald-400/20'
                   : 'text-secondary bg-secondary-container/20'
               }`}>
-                LK-ASYCUDA
+                Demo
               </span>
             </Link>
           </div>
 
-          {/* Quick Actions */}
+          {/* Account menu */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="relative hidden xl:block">
-              <span className={`material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[18px] ${
-                isOverview ? 'text-white/50' : 'text-outline'
-              }`}>search</span>
-              <input
-                type="text"
-                placeholder="Search manifests, HS codes..."
-                className={`w-60 pl-9 pr-8 py-1.5 rounded-lg text-xs transition-all focus:outline-none ${
-                  isOverview
-                    ? 'bg-white/10 backdrop-blur-md border border-white/15 text-white placeholder:text-white/40 focus:bg-white/15 focus:shadow-[0_0_0_2px_rgba(255,255,255,0.1)]'
-                    : 'bg-surface-container-low text-on-surface placeholder:text-outline focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(79,70,229,0.15)]'
-                }`}
-              />
-              <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1 rounded border ${
-                isOverview
-                  ? 'text-white/40 bg-white/5 border-white/10'
-                  : 'text-outline bg-surface-container border-outline-variant/30'
-              }`}>⌘K</span>
-            </div>
-
-
-
-
-
             {/* Profile & Dropdown */}
             <div className="relative ml-1">
               <button 
@@ -116,20 +92,12 @@ export function Header() {
                   
                   <div className="absolute right-0 mt-2 w-48 bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant/30 py-1.5 z-50 overflow-hidden text-sm font-medium">
                     <div className="px-3 py-2 border-b border-outline-variant/20 mb-1">
-                      <div className="text-on-surface font-semibold">Authorized Broker</div>
-                      <div className="text-xs text-on-surface-variant mt-0.5 font-mono">ID: LK-CMB-ASY-0091</div>
+                      <div className="text-on-surface font-semibold">Demo workspace</div>
+                      <div className="text-xs text-on-surface-variant mt-0.5">Document review</div>
                     </div>
                     <Link to="/settings" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-on-surface hover:bg-surface-container-low transition-colors">
                       <span className="material-symbols-outlined text-[18px] text-on-surface-variant">settings</span>
                       Settings
-                    </Link>
-                    <Link to="/auth/signin" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-on-surface hover:bg-surface-container-low transition-colors">
-                      <span className="material-symbols-outlined text-[18px] text-on-surface-variant">login</span>
-                      Sign In
-                    </Link>
-                    <Link to="/auth/signup" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-on-surface hover:bg-surface-container-low transition-colors">
-                      <span className="material-symbols-outlined text-[18px] text-on-surface-variant">person_add</span>
-                      Onboard CHB
                     </Link>
                   </div>
                 </>
@@ -171,8 +139,8 @@ export function Header() {
         </div>
 
         <div className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
-          <div className="px-3 pb-2 text-[10px] font-bold text-outline uppercase tracking-wider">
-            Main Navigation
+          <div className="px-3 pb-2 text-xs font-semibold text-outline">
+            Navigation
           </div>
           {primaryNavItems.map((item) => {
             const isActive = (item.path === '/' && currentPath === '/') ||
@@ -199,9 +167,9 @@ export function Header() {
            <div className="bg-surface-container-low rounded-xl p-3 flex flex-col gap-2">
              <div className="flex items-center gap-2 text-xs font-semibold text-on-surface">
                <span className="material-symbols-outlined text-secondary text-[16px]">verified_user</span>
-               HSM Enclave Protected
+               Demo workspace
              </div>
-             <p className="text-[10px] text-on-surface-variant">Connected to Sri Lanka Customs API Gateway.</p>
+             <p className="text-[10px] text-on-surface-variant">Review extracted document data before preparing a declaration.</p>
            </div>
         </div>
       </div>

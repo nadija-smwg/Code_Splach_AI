@@ -17,7 +17,7 @@ export function ScreenAsycudaGateway({ onTriggerToast }: Props) {
     try {
       const blob = await exportAsycuda(activeId);
       downloadBlob(blob, `CUSDEC_${activeId.slice(0, 8)}.xml`);
-      onTriggerToast({ title: 'CUSDEC XML Downloaded', message: 'Dynamic ASYCUDA declaration generated from knowledge graph.', type: 'success' });
+      onTriggerToast({ title: 'CUSDEC XML downloaded', message: 'The declaration file was generated from the resolved fields.', type: 'success' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Export failed';
       onTriggerToast({ title: 'Export Failed', message: msg, type: 'error' });
@@ -37,18 +37,12 @@ export function ScreenAsycudaGateway({ onTriggerToast }: Props) {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs">
-            <span className="px-2 py-0.5 rounded-full bg-secondary-container/30 text-secondary uppercase font-semibold text-[10px]">Direct Pipe Operational • 2.1ms</span>
-            <span className="text-outline">ASYCUDA World 4.2.1</span>
+            <span className="px-2 py-0.5 rounded-full bg-secondary-container/30 text-secondary font-semibold text-[10px]">File export</span>
           </div>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">ASYCUDA World EDI Gateway & Direct Transmission Corridor</h1>
-          <p className="text-xs md:text-sm text-on-surface-variant mt-1">Live AS2/EDIFACT & XML customs declaration broker pipeline connected to Sri Lanka Customs Department (Times Building, Colombo 01).</p>
+          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">CUSDEC XML export</h1>
+          <p className="text-xs md:text-sm text-on-surface-variant mt-1">Generate an XML declaration from the resolved CUSDEC fields in the current dossier.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => onTriggerToast({ title: 'Gateway Ping Acknowledged', message: 'Node CMB-EDI-01 roundtrip response in 1.9ms.' })}
-            className="px-3.5 py-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-xs font-semibold flex items-center gap-1.5 shadow-sm border border-outline-variant/30">
-            <span className="material-symbols-outlined text-primary text-[16px]">wifi_tethering</span>
-            <span>Trigger Gateway Ping</span>
-          </button>
           <button onClick={handleDownloadCusdec} disabled={isDownloading}
             className="px-3.5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-60">
             <span className={`material-symbols-outlined text-[16px] ${isDownloading ? 'animate-spin' : ''}`}>{isDownloading ? 'sync' : 'download_for_offline'}</span>
@@ -61,8 +55,8 @@ export function ScreenAsycudaGateway({ onTriggerToast }: Props) {
         {/* Transmission Table */}
         <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/20 overflow-hidden flex flex-col">
           <div className="p-4 bg-surface-container-low/50 flex items-center justify-between border-b border-outline-variant/20 text-xs font-bold text-on-surface">
-            <span>Recent ASYCUDA XML Transmissions</span>
-            <span className="text-[10px] text-outline font-normal">Auto-refresh 5s</span>
+            <span>Sample declarations</span>
+            <span className="text-[10px] text-outline font-normal">Select one to preview its structure</span>
           </div>
           <div className="overflow-x-auto text-xs">
             <table className="w-full text-left">
@@ -99,7 +93,7 @@ export function ScreenAsycudaGateway({ onTriggerToast }: Props) {
         <div className="lg:col-span-5 bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden flex flex-col text-xs">
           <div className="p-3 bg-surface-container-low/60 border-b border-outline-variant/20 flex items-center justify-between">
             <div>
-              <div className="font-bold text-on-surface">Live ASYCUDA Transmission Payload</div>
+              <div className="font-bold text-on-surface">CUSDEC XML preview</div>
               <div className="text-[10px] font-mono text-outline">{selectedDec} • Schema SAD v4.2</div>
             </div>
             <div className="flex items-center gap-1 bg-surface-container-low p-0.5 rounded">
@@ -154,11 +148,11 @@ export function ScreenAsycudaGateway({ onTriggerToast }: Props) {
           </div>
           <div className="p-3 bg-surface-container-low border-t border-outline-variant/20 flex items-center justify-between text-[11px]">
             <span className="text-secondary font-semibold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[15px]">verified</span> SHA-256 Digest Sealed
+              <span className="material-symbols-outlined text-[15px]">info</span> Preview only
             </span>
-            <button onClick={() => onTriggerToast({ title: 'Payload Re-sent', message: 'EDI AS2 transmission triggered to Sri Lanka Customs node.' })}
+            <button onClick={() => onTriggerToast({ title: 'Preview refreshed', message: 'The declaration preview has been refreshed.' })}
               className="px-2.5 py-1 rounded bg-primary text-white font-semibold">
-              Re-Send AS2
+              Refresh preview
             </button>
           </div>
         </div>

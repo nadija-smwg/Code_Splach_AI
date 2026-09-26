@@ -139,9 +139,9 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="text-xs font-semibold text-primary uppercase tracking-wider">Topology Live • Core Relational Map</div>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Customs Entity Knowledge Graph &amp; Relational Map</h1>
-          <p className="text-xs md:text-sm text-on-surface-variant mt-1">Multi-document cross-reference &amp; declaration lineage graph under active ASYCUDA clearance dossier.</p>
+          <div className="text-xs font-semibold text-primary">Document relationships</div>
+          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Knowledge graph</h1>
+          <p className="text-xs md:text-sm text-on-surface-variant mt-1">See how documents, extracted values, and resolved CUSDEC fields relate.</p>
         </div>
         <button onClick={handleExport} className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-primary text-white rounded-lg shadow-sm hover:bg-primary/90">
           <span className="material-symbols-outlined text-[16px]">download</span>
@@ -192,8 +192,8 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
         <div className="lg:col-span-3 bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/30 shadow-sm flex flex-col gap-4 text-xs">
           <div className="border-b border-outline-variant/20 pb-3 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase text-outline">Topology Inspector</span>
-              <h2 className="text-sm font-bold text-on-surface">{selectedNode ? selectedNode.label : 'Select a Node'}</h2>
+              <span className="text-[10px] text-outline">Selected item</span>
+              <h2 className="text-sm font-bold text-on-surface">{selectedNode ? selectedNode.label : 'Select an item'}</h2>
             </div>
             {selectedNode && (
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${selectedNode.type === 'document' ? 'bg-primary-fixed text-primary' : 'bg-secondary-container/30 text-secondary'}`}>
@@ -213,13 +213,13 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
           ) : (
             <div className="bg-surface-container-low p-3 rounded-lg flex flex-col items-center gap-2 py-8">
               <span className="material-symbols-outlined text-outline text-[32px]">touch_app</span>
-              <p className="text-on-surface-variant text-center">Click any node in the graph to inspect its properties and provenance data.</p>
+              <p className="text-on-surface-variant text-center">Select an item in the graph to view its details and source document.</p>
             </div>
           )}
 
           {/* Legend */}
           <div className="border-t border-outline-variant/20 pt-3 space-y-2">
-            <div className="text-[10px] uppercase text-outline font-semibold">Edge Types</div>
+            <div className="text-[10px] text-outline font-semibold">Relationships</div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-purple-400"></div>
               <span className="text-on-surface-variant">Assertion contributes to canonical field</span>

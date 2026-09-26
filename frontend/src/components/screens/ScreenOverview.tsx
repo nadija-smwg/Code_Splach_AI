@@ -172,7 +172,7 @@ export function ScreenOverview({ onTriggerToast }: Props) {
       >
         <div className="relative w-full min-h-[520px] md:min-h-[560px] flex flex-col justify-center">
           <img
-            alt="ClearanceX Intelligence Hub"
+            alt="ClearanceX document review workspace"
             className="absolute inset-0 w-full h-full object-cover object-center"
             src="/screen.png"
           />
@@ -209,19 +209,17 @@ export function ScreenOverview({ onTriggerToast }: Props) {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
               </span>
-              <span className="text-emerald-400 font-semibold uppercase tracking-wider">System Online</span>
-              <span className="text-white/40">•</span>
-              <span className="text-white/60 font-mono">ASYCUDA Connected</span>
+              <span className="text-emerald-400 font-semibold">Document review</span>
             </div>
 
             {/* Title */}
             <div ref={titleRef} style={{ opacity: 0 }}>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight drop-shadow-lg">
                 Clearance<span style={{ color: '#5b8fd4' }}>X</span>{' '}
-                <span className="font-light text-white/80">Intelligence Hub</span>
+                <span className="font-light text-white/80">Document review</span>
               </h1>
               <p className="text-white/75 text-sm md:text-base max-w-2xl mt-2 leading-relaxed">
-                AI-powered customs document verification &amp; ASYCUDA clearance pipeline for Sri Lankan apparel &amp; transshipment exports.
+                Compare extracted CUSDEC fields across the documents in each dossier.
               </p>
             </div>
 
@@ -235,16 +233,16 @@ export function ScreenOverview({ onTriggerToast }: Props) {
                 className="inline-flex items-center justify-center gap-2.5 text-white px-7 py-3 rounded-xl text-sm font-semibold shadow-lg border border-white/10"
               >
                 <span className="material-symbols-outlined text-[20px]">add</span>
-                <span>+ Ingest New Dossier</span>
+                <span>Add dossier</span>
               </button>
               <button
                 onMouseEnter={onBtnEnter}
                 onMouseLeave={onBtnLeave}
-                onClick={(e) => { onBtnClick(e); onTriggerToast({ title: 'Batch Manifest Assembled', message: 'Downloading encrypted EDIFACT XML package for active export cycle.' }); }}
+                onClick={(e) => { onBtnClick(e); navigate('/batch-filing'); }}
                 className="inline-flex items-center justify-center gap-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-md text-white px-7 py-3 rounded-xl text-sm font-semibold border border-white/15 transition-colors"
               >
                 <span className="material-symbols-outlined text-[20px] text-white/70">file_download</span>
-                <span>Download Batch Manifest</span>
+                <span>View batch filing</span>
               </button>
             </div>
           </div>
@@ -270,8 +268,8 @@ export function ScreenOverview({ onTriggerToast }: Props) {
               <span className="material-symbols-outlined text-[20px]" style={{ color: NAVY }}>route</span>
             </div>
             <div>
-              <h2 className="text-base font-semibold text-on-surface">Active Consignment Pipeline</h2>
-              <p className="text-xs text-outline">Live dossier tracking &amp; clearance channel management</p>
+              <h2 className="text-base font-semibold text-on-surface">Dossiers</h2>
+              <p className="text-xs text-outline">Review document extraction status and discrepancies.</p>
             </div>
           </div>
           <button
@@ -299,15 +297,15 @@ export function ScreenOverview({ onTriggerToast }: Props) {
         {!loading && dossiers.length === 0 && (
           <div className="p-10 text-center">
             <span className="material-symbols-outlined text-[44px] text-outline">inbox</span>
-            <p className="text-sm font-semibold text-on-surface mt-3">No Consignments Yet</p>
+            <p className="text-sm font-semibold text-on-surface mt-3">No dossiers yet</p>
             <p className="text-xs text-on-surface-variant mt-1 max-w-md mx-auto">
-              Upload your first shipping dossier to begin automated document cross-examination.
+              Add documents to compare the CUSDEC fields they contain.
             </p>
             <button onClick={() => navigate('/dossiers')}
               style={{ backgroundColor: NAVY }}
               className="mt-4 inline-flex items-center gap-2 text-white px-5 py-2.5 rounded-lg text-xs font-semibold shadow-sm hover:opacity-90 transition-all">
               <span className="material-symbols-outlined text-[16px]">add</span>
-              <span>Ingest First Dossier</span>
+              <span>Add a dossier</span>
             </button>
           </div>
         )}
@@ -319,10 +317,10 @@ export function ScreenOverview({ onTriggerToast }: Props) {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="bg-surface-container-low text-outline font-semibold uppercase tracking-wider">
-                    <th className="py-3 px-4">Consignment ID</th>
+                    <th className="py-3 px-4">Dossier ID</th>
                     <th className="py-3 px-4">Documents</th>
-                    <th className="py-3 px-4">AI Status</th>
-                    <th className="py-3 px-4">Clearance Channel</th>
+                    <th className="py-3 px-4">Processing status</th>
+                    <th className="py-3 px-4">Review status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>

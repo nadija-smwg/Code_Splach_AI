@@ -50,7 +50,7 @@ export function ScreenAuditTrail({ onTriggerToast }: Props) {
     const a = document.createElement('a');
     a.href = url; a.download = `audit_trail_${activeId.slice(0, 8)}.json`;
     a.click(); URL.revokeObjectURL(url);
-    onTriggerToast({ title: 'Ledger Exported', message: 'Audit trail downloaded as JSON.', type: 'success' });
+    onTriggerToast({ title: 'Audit trail exported', message: 'The audit trail was downloaded as JSON.', type: 'success' });
   };
 
   const selected = selectedIdx !== null ? entries[selectedIdx] : null;
@@ -59,24 +59,24 @@ export function ScreenAuditTrail({ onTriggerToast }: Props) {
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="text-xs text-primary font-semibold uppercase tracking-wider">Audit Ledger • Immutable Event Trail</div>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">AI Provenance &amp; Cryptographic Audit Trail</h1>
+          <div className="text-xs text-primary font-semibold">Review history</div>
+          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Audit trail</h1>
           <p className="text-xs md:text-sm text-on-surface-variant mt-1">
-            Timestamped pipeline event sequencing, model inference receipts, and customs inspector sign-offs.
+            A timestamped record of document processing, field resolution, and discrepancy review.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onTriggerToast({ title: 'Enclave Validated', message: 'Root merkle tree matches Sri Lanka Customs HSM seal.' })}
+            onClick={() => onTriggerToast({ title: 'Audit trail checked', message: 'The displayed events are available for export.' })}
             className="px-3 py-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-xs font-semibold flex items-center gap-1.5 border border-outline-variant/30 shadow-sm"
           >
             <span className="material-symbols-outlined text-secondary text-[16px]">verified_user</span>
-            <span>Verify Enclave</span>
+            <span>Check audit trail</span>
           </button>
           <button onClick={handleExport}
             className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm">
             <span className="material-symbols-outlined text-[16px]">download</span>
-            <span>Export Ledger (.JSON)</span>
+            <span>Export JSON</span>
           </button>
         </div>
       </div>
@@ -85,8 +85,8 @@ export function ScreenAuditTrail({ onTriggerToast }: Props) {
         {/* Event Table */}
         <div className="xl:col-span-8 bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/20 overflow-hidden flex flex-col">
           <div className="p-3 bg-surface-container-low flex items-center justify-between font-bold border-b border-outline-variant/20">
-            <span>Ledger Sequence Buffer</span>
-            <span className="font-mono text-outline font-normal">{entries.length} Events</span>
+            <span>Recorded events</span>
+            <span className="font-mono text-outline font-normal">{entries.length} events</span>
           </div>
 
           {loading && (
@@ -183,7 +183,7 @@ export function ScreenAuditTrail({ onTriggerToast }: Props) {
           <div className="p-2.5 bg-secondary-container/30 rounded-lg flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-[20px]">workspace_premium</span>
             <div>
-              <span className="font-bold block text-[11px]">Sri Lanka Customs Certified</span>
+              <span className="font-bold block text-[11px]">Current dossier</span>
               <span className="text-outline text-[10px]">Shipment: {activeId.slice(0, 16)}...</span>
             </div>
           </div>

@@ -120,20 +120,13 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
           <div className="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg text-xs">
             <span className="material-symbols-outlined text-primary text-[18px]">inventory_2</span>
             <div>
-              <span className="text-[10px] text-outline uppercase block">Ref ID</span>
+              <span className="text-[10px] text-outline block">Dossier ID</span>
               <span className="font-bold text-on-surface font-mono">CLX-{shipmentId.slice(0, 8).toUpperCase()}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
-            <span className="font-medium text-on-surface">MAS Holdings</span>
-            <span className="material-symbols-outlined text-outline text-[14px]">arrow_forward</span>
-            <span className="font-medium text-on-surface">Marks & Spencer UK</span>
-            <span className="text-outline">•</span>
-            <span className="bg-surface-container px-2 py-0.5 rounded text-[11px]">LKCMB Air Cargo</span>
-          </div>
           <div className="flex items-center gap-1.5 bg-primary-fixed/30 text-tertiary px-3 py-1 rounded-full text-xs font-semibold">
             <span className={`h-2 w-2 rounded-full ${isResolved ? 'bg-secondary' : 'bg-primary-container animate-pulse'}`}></span>
-            <span>{isResolved ? 'Review Complete' : 'Review Active'}</span>
+            <span>{isResolved ? 'Review complete' : 'In review'}</span>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-between xl:justify-end text-xs">
@@ -143,11 +136,11 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
                 ? (activeDiscrepancy.xai_block.layer3.overall_confidence * 100).toFixed(1) 
                 : '99.0'}%
             </div>
-            <div className="text-[11px] text-outline">ASYCUDA Readiness</div>
+            <div className="text-[11px] text-outline">Match confidence</div>
           </div>
           <button onClick={() => navigate('/asycuda-gateway')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-medium transition-colors">
             <span className="material-symbols-outlined text-[16px] text-outline">code</span>
-            <span>Export ASYCUDA XML</span>
+            <span>Export CUSDEC XML</span>
           </button>
           {activeDiscrepancy && (
             <button onClick={handleExecuteResolution} disabled={isResolved || isResolving}
@@ -155,7 +148,7 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
               <span className={`material-symbols-outlined text-[16px] ${isResolving ? 'animate-spin' : ''}`}>
                 {isResolving ? 'refresh' : (isResolved ? 'check_circle' : 'verified_user')}
               </span>
-              <span>{isResolving ? 'Saving...' : (isResolved ? 'Approved & Sealed' : 'Approve Resolution')}</span>
+              <span>{isResolving ? 'Saving...' : (isResolved ? 'Marked reviewed' : 'Mark as reviewed')}</span>
             </button>
           )}
         </div>
@@ -268,11 +261,11 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
                       }`}>Attention Required</span>
                       <span className="font-mono text-tertiary font-semibold text-xs">Δ {activeDiscrepancy.delta}</span>
                     </div>
-                    <h2 className="text-base font-bold text-on-surface">Data Mismatch Detected</h2>
+                <h2 className="text-base font-bold text-on-surface">Field values differ</h2>
                   </div>
                   <span className="material-symbols-outlined text-tertiary bg-tertiary-fixed/40 p-2 rounded-lg text-[20px]">balance</span>
                 </div>
-                <p className="text-xs text-on-surface-variant">Divergence isolated between {activeDiscrepancy.xai_block.layer1.source_documents[0]} and {activeDiscrepancy.xai_block.layer1.source_documents[1]}.</p>
+                <p className="text-xs text-on-surface-variant">Compare the values found in these two source documents.</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="bg-surface-container-low p-3 rounded-lg border border-outline-variant/20">
                     <span className="text-[10px] text-outline uppercase block truncate">{activeDiscrepancy.xai_block.layer1.source_documents[0] || 'Doc A'}</span>
@@ -299,9 +292,9 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
                 <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2">
                   <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-primary text-[18px]">account_tree</span>
-                    Explainable AI Audit Trace
+                    How this was found
                   </h3>
-                  <span className="text-[10px] text-outline font-mono">Deterministic Path</span>
+                  <span className="text-[10px] text-outline">Review steps</span>
                 </div>
                 <div className="relative pl-5 flex flex-col gap-4 text-xs mt-1">
                   <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-surface-container-highest"></div>
@@ -324,10 +317,10 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
 
               {/* Decision Options */}
               <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
-                <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider">Decision Synthesis</h3>
+                <h3 className="text-xs font-bold text-on-surface">Resolution options</h3>
                 {[
-                  { key: 'A', label: `Option A: Retain ${activeDiscrepancy.value_a}`, risk: 'High Port Hold Risk', desc: `Submit directly without compensating action.` },
-                  { key: 'B', label: 'Option B: AI Recommended Action', risk: '<0.01% Audit Risk', desc: activeDiscrepancy.xai_block.layer4.recommended_action },
+                  { key: 'A', label: `Use ${activeDiscrepancy.value_a}`, risk: 'Source A', desc: 'Keep the value from the first source document.' },
+                  { key: 'B', label: 'Use suggested action', risk: 'Suggested', desc: activeDiscrepancy.xai_block.layer4.recommended_action },
                 ].map((opt) => (
                   <div key={opt.key} onClick={() => !isResolved && setSelectedDecision(opt.key)}
                     className={`p-3 rounded-lg text-xs border transition-all ${isResolved ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${selectedDecision === opt.key ? 'border-primary bg-primary-fixed/20 shadow-sm' : 'border-outline-variant/30 bg-surface-container-low'}`}>
@@ -348,7 +341,7 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
               <span className="material-symbols-outlined text-[48px] text-secondary">verified</span>
               <h3 className="text-lg font-bold text-on-surface">No Discrepancies Detected</h3>
               <p className="text-xs text-on-surface-variant max-w-xs">
-                All extracted fields match across documents perfectly according to active customs rules.
+                No differences were found in the available CUSDEC fields.
               </p>
             </div>
           )}
