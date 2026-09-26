@@ -79,6 +79,7 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let network: any = null;
+    let finalFitTimer: number | null = null;
 
     import('vis-network').then(({ Network }) => {
       import('vis-data').then(({ DataSet }) => {
@@ -113,13 +114,22 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
         network = new Network(containerRef.current!, { nodes, edges }, VIS_OPTIONS);
         networkRef.current = network;
 
-        // vis-network starts at its default scale, which leaves small graphs as an
-        // unreadable cluster in the centre of a large canvas. Fit after physics has
-        // assigned final positions, then stop physics so the view remains stable.
+        // The network constructor can report stabilization before the flex canvas
+        // has its final dimensions. Deferring fit until the next paint (and once
+        // more after the canvas settles) prevents the view being anchored at the
+        // top-left and clipping nodes at the canvas edge.
+        const fitNetwork = () => {
+          network.redraw();
+          network.fit({ animation: false });
+        };
+        const fitAfterLayout = () => window.requestAnimationFrame(fitNetwork);
+        finalFitTimer = window.setTimeout(fitNetwork, 800);
+
         network.once('stabilizationIterationsDone', () => {
-          network.fit({ animation: false, padding: 72 });
+          fitAfterLayout();
           network.setOptions({ physics: false });
         });
+        network.once('stabilized', fitAfterLayout);
 
         network.on('selectNode', (params: { nodes: string[] }) => {
           if (params.nodes.length > 0) {
@@ -134,6 +144,7 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
     });
 
     return () => {
+      if (finalFitTimer !== null) window.clearTimeout(finalFitTimer);
       network?.destroy();
       if (networkRef.current === network) networkRef.current = null;
     };
@@ -145,7 +156,7 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
       setIsGraphFullscreen(isFullscreen);
       window.setTimeout(() => {
         networkRef.current?.redraw();
-        networkRef.current?.fit({ animation: false, padding: isFullscreen ? 100 : 72 });
+        networkRef.current?.fit({ animation: false });
       }, 100);
     };
 
