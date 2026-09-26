@@ -38,19 +38,6 @@ interface ApiDiscrepancy {
   xai_block: XAIBlock;
 }
 
-function ConfidencePill({ level, score }: { level: string; score: number }) {
-  const colors: Record<string, string> = {
-    high: 'bg-green-500/20 text-green-400 border-green-500/30',
-    medium: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    low: 'bg-red-500/20 text-red-400 border-red-500/30',
-  };
-  return (
-    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${colors[level] || colors.medium}`}>
-      {Math.round(score * 100)}% {level}
-    </span>
-  );
-}
-
 export function ScreenDiscrepancies({ onTriggerToast }: Props) {
   const navigate = useNavigate();
   const { shipmentId } = useShipment();
@@ -91,17 +78,16 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
   });
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-5">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-            <span>Operations</span><span className="text-outline-variant">/</span>
-            <span>Discrepancy Reconciliation Stream</span>
-            {!loading && <span className="px-2 py-0.5 rounded-full bg-primary-fixed text-primary text-[10px]">{discrepancies.length} Active</span>}
+            <span>Pre-filing review</span>
+            {!loading && <span className="px-2 py-0.5 rounded-full bg-error-container/30 text-error text-[10px]">{discrepancies.length} needs review</span>}
           </div>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Active Discrepancies &amp; Conflict Center</h1>
-          <p className="text-xs md:text-sm text-on-surface-variant max-w-2xl mt-1">
-            Neuro-symbolic XAI engine pre-empting customs fines, green-channel delays, and cargo holds.
+          <h1 className="text-2xl font-bold text-on-surface tracking-tight mt-1">Discrepancies</h1>
+          <p className="text-xs md:text-sm text-on-surface-variant max-w-xl mt-1">
+            Resolve differences in CUSDEC fields before preparing the declaration.
           </p>
         </div>
         <button
@@ -109,12 +95,12 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container shadow-sm transition-all"
         >
           <span className="material-symbols-outlined text-[16px]">sync</span>
-          <span>Re-run Evaluation</span>
+          <span>Refresh</span>
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-surface-container-lowest p-3 rounded-xl shadow-sm border border-outline-variant/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <div className="bg-surface-container-lowest px-3 py-2 rounded-xl border border-outline-variant/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-1">
           {[['all', 'All'], ['high', 'High Severity'], ['medium', 'Medium']].map(([cat, label]) => (
             <button key={cat} onClick={() => setFilter(cat)}
@@ -167,42 +153,40 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
             const isExpanded = expandedId === item.discrepancy_id;
             const isResolved = resolvedItems[item.discrepancy_id];
             return (
-              <div key={item.discrepancy_id} className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/20 overflow-hidden">
+              <div key={item.discrepancy_id} className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/20 overflow-hidden border-l-4 border-l-error">
                 {/* Header row */}
                 <div className="bg-primary/5 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/20 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${isResolved ? 'bg-secondary' : 'bg-primary animate-pulse'}`}></span>
+                    <span className={`w-2 h-2 rounded-full ${isResolved ? 'bg-secondary' : 'bg-error'}`}></span>
                     <span className="font-bold text-on-surface">{item.field_label || item.field}</span>
-                    <span className="text-outline">•</span>
-                    <span className="font-mono text-outline text-[10px]">{item.rule_id}</span>
+                    <span className="text-outline">requires review</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ConfidencePill level={xai.layer3.confidence_level} score={xai.layer3.overall_confidence} />
                     <span className={`px-2.5 py-0.5 rounded-full font-semibold text-[10px] uppercase ${isResolved ? 'bg-secondary-container/30 text-secondary' : 'bg-primary-fixed text-primary'}`}>
-                      {isResolved ? 'Reconciled' : 'Attention Required'}
+                      {isResolved ? 'Reviewed' : 'Open'}
                     </span>
                   </div>
                 </div>
 
                 {/* Main body */}
-                <div className="p-4 grid grid-cols-1 xl:grid-cols-12 gap-4 text-xs">
-                  <div className="xl:col-span-7 space-y-3">
+                <div className="p-4 flex flex-col gap-4 text-xs">
+                  <div className="space-y-3">
                     <div>
-                      <div className="text-[10px] text-primary font-bold uppercase tracking-wider">CUSDEC field requiring resolution</div>
-                      <h2 className="text-base font-bold text-on-surface mt-0.5">{item.field_label || item.field}</h2>
+                      <div className="text-[10px] text-outline font-bold uppercase tracking-wider">Compare source values</div>
+                      <p className="text-xs text-on-surface-variant mt-1">Check the original document before choosing the declaration value.</p>
                     </div>
                     {/* Values */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 items-stretch">
                       {sources.map((source, index) => (
-                        <button key={`${source.document_id}-${index}`} onClick={() => navigate('/review-workspace')} className="bg-surface-container-low hover:bg-surface-container p-2.5 rounded-lg text-left transition-colors">
+                        <button key={`${source.document_id}-${index}`} onClick={() => navigate('/review-workspace')} className="bg-surface-container-low hover:bg-surface-container p-3 rounded-lg text-left transition-colors">
                           <div className="text-[10px] text-outline uppercase truncate" title={source.document_label}>{source.document_label}</div>
-                          <div className="text-sm font-bold text-on-surface font-mono mt-0.5 break-all">{source.raw_value}</div>
-                          <div className="text-[10px] text-on-surface-variant mt-1">Page {source.page} · {(source.extraction_confidence * 100).toFixed(0)}% confidence</div>
+                          <div className="text-base font-bold text-on-surface font-mono mt-1 break-all">{source.raw_value}</div>
+                          <div className="text-[10px] text-primary mt-2 font-semibold">Review page {source.page}</div>
                         </button>
                       ))}
-                      <div className="bg-primary-fixed/30 p-2.5 rounded-lg">
-                        <div className="text-[10px] text-primary uppercase font-bold">Variance</div>
-                        <div className="text-sm font-bold text-primary font-mono mt-0.5">{item.delta}</div>
+                      <div className="bg-error/10 border border-error/20 p-3 rounded-lg flex flex-col justify-center min-w-28">
+                        <div className="text-[10px] text-error uppercase font-bold">Difference</div>
+                        <div className="text-sm font-bold text-error font-mono mt-1">{item.delta}</div>
                       </div>
                     </div>
 
@@ -210,7 +194,7 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
                     <div className="p-2.5 bg-surface-container rounded-lg">
                       <button className="flex items-center gap-2 w-full text-left" onClick={() => setExpandedId(isExpanded ? null : item.discrepancy_id)}>
                         <span className="material-symbols-outlined text-primary text-[16px]">account_tree</span>
-                        <span className="font-semibold text-on-surface">XAI Reasoning Chain</span>
+                        <span className="font-semibold text-on-surface">Why this was flagged</span>
                         <span className="material-symbols-outlined text-outline text-[16px] ml-auto">{isExpanded ? 'expand_less' : 'expand_more'}</span>
                       </button>
                       {isExpanded && (
@@ -231,23 +215,20 @@ export function ScreenDiscrepancies({ onTriggerToast }: Props) {
                   </div>
 
                   {/* XAI Layer 4 — Counterfactual */}
-                  <div className="xl:col-span-5 bg-surface-container-low/50 p-3 rounded-lg flex flex-col justify-between gap-3">
+                  <div className="bg-surface-container-low/50 p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="text-[10px] font-bold text-primary uppercase flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">auto_awesome</span> AI Directive Action
+                        <span className="material-symbols-outlined text-[14px]">auto_awesome</span> Suggested next step
                       </div>
                       <div className="mt-1 font-mono text-[11px] text-on-surface bg-surface-container-lowest p-2 rounded border border-outline-variant/30 leading-relaxed">
                         {xai.layer4.recommended_action}
-                      </div>
-                      <div className="mt-2 text-[10px] text-on-surface-variant">
-                        <span className="text-outline">Confidence explanation: </span>{xai.layer3.confidence_explanation}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleResolve(item.discrepancy_id)} disabled={isResolved}
                         className={`flex-1 py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm text-xs ${isResolved ? 'bg-secondary-container/40 text-secondary cursor-default' : 'bg-primary text-white hover:bg-primary/90'}`}>
                         <span className="material-symbols-outlined text-[16px]">{isResolved ? 'check_circle' : 'done_all'}</span>
-                        <span>{isResolved ? 'Resolved' : 'Auto-Resolve'}</span>
+                        <span>{isResolved ? 'Reviewed' : 'Mark reviewed'}</span>
                       </button>
                       <button onClick={() => navigate('/knowledge-graph')} className="px-3 py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-variant font-medium text-xs">Graph</button>
                     </div>
