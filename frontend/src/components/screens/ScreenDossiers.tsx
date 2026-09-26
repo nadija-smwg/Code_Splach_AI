@@ -139,13 +139,7 @@ export function ScreenDossiers({ onTriggerToast }: Props) {
             Drop shipping dossiers to auto-extract structured line items, verify against Sri Lanka Customs schedules, and audit for cross-document consistency.
           </p>
         </div>
-        <div className="bg-surface-container px-4 py-2 rounded-lg flex items-center gap-3 shadow-sm">
-          <span className="material-symbols-outlined text-secondary text-[20px]">security</span>
-          <div>
-            <div className="text-[10px] text-on-surface-variant uppercase">ASYCUDA Gateway</div>
-            <div className="text-xs font-semibold font-mono">Direct Enclave Ready</div>
-          </div>
-        </div>
+
       </div>
 
       {/* Drop Zone */}
