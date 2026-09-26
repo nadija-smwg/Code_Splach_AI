@@ -754,7 +754,7 @@ class EntityExtractor:
                     # Map OpenAI value back to OCR bbox
                     bbox, ocr_conf = _multi_token_bbox(value, all_tokens)
                     page = self._value_page(value, all_tokens)
-                    conf = self._openai_fallback_confidence(bbox, ocr_conf)
+                    conf = self._openai_confidence(bbox, ocr_conf)
 
                     result.entities.append(ExtractedEntity(
                         entity_type=entity_type,
