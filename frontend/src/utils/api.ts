@@ -2,7 +2,7 @@
 import axios from 'axios';
 import type {
   UploadResponse, ShipmentStatus, DocumentExtraction,
-  GraphData, Discrepancy, AuditEntry, KeyFieldResponse,
+  GraphData, Discrepancy, AuditEntry, KeyFieldResponse, CusdecReadiness,
 } from '../types';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 export const api = axios.create({
@@ -52,6 +52,10 @@ export async function exportAsycuda(id: string): Promise<Blob> {
   const { data } = await api.get(`/shipments/${id}/asycuda-export`, {
     responseType: 'blob',
   });
+  return data;
+}
+export async function getCusdecReadiness(id: string): Promise<CusdecReadiness> {
+  const { data } = await api.get<CusdecReadiness>(`/shipments/${id}/cusdec-readiness`);
   return data;
 }
 export function downloadBlob(blob: Blob, filename: string) {

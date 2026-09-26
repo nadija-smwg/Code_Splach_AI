@@ -122,6 +122,27 @@ export interface KeyFieldResponse {
 }
 
 // ============================================
+// CUSDEC EXPORT READINESS
+// ============================================
+export interface CusdecReadinessBlocker {
+  code: string;
+  field: string;
+  message: string;
+  source: string;
+}
+
+export interface CusdecReadiness {
+  shipment_id: string;
+  status: 'ready' | 'blocked';
+  export_allowed: boolean;
+  blocker_count: number;
+  blockers: CusdecReadinessBlocker[];
+  resolved_field_count: number;
+  required_extracted_field_count: number;
+  notice: string;
+}
+
+// ============================================
 // KNOWLEDGE GRAPH
 // ============================================
 export interface GraphNode {
