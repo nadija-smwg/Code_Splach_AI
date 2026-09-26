@@ -5,14 +5,8 @@ from dataclasses import dataclass
 # Fix for PaddlePaddle 3.x on Windows CPU â€” MUST be set before paddleocr import
 os.environ["FLAGS_use_onednn"] = "0"
 
-try:
-    import pyclipper
-    import cv2
-    from paddleocr import PaddleOCR
-except Exception as e:
-    import logging
-    logging.getLogger(__name__).error(f"PaddleOCR import failed: {e}")
-    PaddleOCR = None
+import pyclipper
+from paddleocr import PaddleOCR
 
 logger = logging.getLogger(__name__)
 
