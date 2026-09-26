@@ -2,7 +2,7 @@
 """
 Phase 06 -- Header Entity Extraction  (Hybrid Strategy)
 =========================================================
-Decision (Phase 05, Option C): PaddleOCR local rules first -> Gemini fallback only
+Decision (Phase 05, Option C): PaddleOCR local rules first -> OpenAI fallback only
 when local extraction cannot reliably find a field.
 
 Architecture
@@ -12,16 +12,16 @@ Architecture
       v
   LocalExtractor          <- regex / label-match / known patterns
       |
-      +-- confident? --> accept (no Gemini call)
+      +-- confident? --> accept (no OpenAI call)
       |
-      +-- missing / ambiguous --> GeminiFallback (Vision API, one call per page)
+      +-- missing / ambiguous --> OpenAIFallback (Vision API, one call per page)
                                       |
                                       v
                                map_to_bbox() --> OCR bounding box
 
 Extraction Responsibility Boundary
 ------------------------------------
-  THIS FILE  : populates entity["value"]        <- raw string, as OCR/Gemini saw it
+  THIS FILE  : populates entity["value"]        <- raw string, as OCR/OpenAI saw it
   normalizer : populates entity["normalized_value"] and entity["unit"]   <- Phase 09
   Do NOT normalise, convert units, clean identifiers, or format dates here.
 
@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 class ExtractedEntity:
     """
     One extracted header entity.
-    value            <- Phase 06: raw string exactly as OCR/Gemini saw it
+    value            <- Phase 06: raw string exactly as OCR/OpenAI saw it
     normalized_value <- Phase 09: canonical converted form
     unit             <- Phase 09: unit string
     """
@@ -92,9 +92,9 @@ class ExtractionTelemetry:
     """
     fields_requested: int = 0
     local_extracted: int = 0
-    gemini_fallback_fields: int = 0
-    gemini_calls: int = 0
-    gemini_recovered: int = 0
+    openai_fallback_fields: int = 0
+    openai_calls: int = 0
+    openai_recovered: int = 0
     failed: int = 0
     elapsed_sec: float = 0.0
 
@@ -102,9 +102,9 @@ class ExtractionTelemetry:
         return (
             f"Fields requested: {self.fields_requested}\n"
             f"Local extraction: {self.local_extracted}\n"
-            f"Gemini fallback:  {self.gemini_fallback_fields}\n"
-            f"Gemini calls:     {self.gemini_calls}\n"
-            f"Gemini recovered: {self.gemini_recovered}\n"
+            f"OpenAI fallback:  {self.openai_fallback_fields}\n"
+            f"OpenAI calls:     {self.openai_calls}\n"
+            f"OpenAI recovered: {self.openai_recovered}\n"
             f"Failed:           {self.failed}\n"
             f"Elapsed:          {self.elapsed_sec:.2f}s"
         )
@@ -194,7 +194,7 @@ _DEFAULT_BBOX = [0, 0, 0, 0]
 # Minimum OCR confidence below which a local match is considered unreliable
 _MIN_OCR_CONFIDENCE = 0.60
 
-# Minimum local extraction confidence to skip Gemini
+# Minimum local extraction confidence to skip OpenAI
 _LOCAL_CONFIDENCE_GATE = 1.10
 
 
@@ -219,7 +219,7 @@ def map_to_bbox(
     threshold: float = 0.60,
 ) -> Optional[OcrToken]:
     """
-    Find the OCR token whose text best matches a Gemini/local-extracted value.
+    Find the OCR token whose text best matches a OpenAI/local-extracted value.
 
     Scoring strategy (highest wins):
       1. Exact substring containment (value in token text)  -> 1.0
@@ -288,7 +288,7 @@ def _multi_token_bbox(value: str, ocr_tokens: list) -> tuple[list, float]:
 
 
 def _strip_fences(text: str) -> str:
-    """Remove markdown code fences Gemini sometimes wraps JSON in."""
+    """Remove markdown code fences OpenAI sometimes wraps JSON in."""
     text = text.strip()
     text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
     text = re.sub(r"\n?```$", "", text)
@@ -565,12 +565,12 @@ class LocalExtractor:
 
 
 # ---------------------------------------------------------------------------
-# Layer 2: Gemini Vision fallback
+# Layer 2: OpenAI Vision fallback
 # ---------------------------------------------------------------------------
 
-class GeminiFallback:
+class OpenAIFallback:
     """
-    Calls Gemini Vision API using Pydantic Structured Outputs.
+    Calls OpenAI Vision API using Pydantic Structured Outputs.
     """
 
     def __init__(self, model):
@@ -625,10 +625,10 @@ class GeminiFallback:
                         import time, re
                         match = re.search(r"Please retry in ([\d\.]+)s", error_msg)
                         wait_sec = float(match.group(1)) + 1 if match else 20.0
-                        logger.warning(f"Gemini 429 Quota Exceeded in Extractor. Waiting {wait_sec:.1f}s before retry (Attempt {attempt+1}/{max_retries})...")
+                        logger.warning(f"OpenAI 429 Quota Exceeded in Extractor. Waiting {wait_sec:.1f}s before retry (Attempt {attempt+1}/{max_retries})...")
                         time.sleep(wait_sec)
                     else:
-                        logger.error(f"Gemini API structured extraction failed after {attempt+1} attempts: {e}")
+                        logger.error(f"OpenAI API structured extraction failed after {attempt+1} attempts: {e}")
                         return {}
     
             results = {}
@@ -638,7 +638,7 @@ class GeminiFallback:
     
             return results
         except Exception as e:
-            logger.error(f"Failed to prepare Gemini schema: {e}")
+            logger.error(f"Failed to prepare OpenAI schema: {e}")
             return {}
 
 
@@ -653,7 +653,7 @@ class EntityExtractor:
     Phase 06 strategy:
       1. LocalExtractor  tries all fields via label-match + regex on OCR tokens.
       2. Fields with confidence >= _LOCAL_CONFIDENCE_GATE are accepted.
-      3. Remaining fields are sent to GeminiFallback (ONE API call per page).
+      3. Remaining fields are sent to OpenAIFallback (ONE API call per page).
       4. All found values are mapped to OCR bounding boxes via map_to_bbox().
 
     Usage
@@ -666,25 +666,19 @@ class EntityExtractor:
     """
 
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        if not api_key or api_key.strip() in ("", "your_key_here"):
+        from .openai_client import OpenAIClient
+        self.client = OpenAIClient()
+        if self.client._client is None:
             logger.warning(
-                "GEMINI_API_KEY not set. EntityExtractor will run local-only mode "
-                "(no Gemini fallback). Set GEMINI_API_KEY in backend/.env to enable Gemini."
+                "OPENAI_API_KEY not set. EntityExtractor will run local-only mode "
+                "(no OpenAI fallback)."
             )
-            self._model = None
+            self.client = None
         else:
-            try:
-                genai.configure(api_key=api_key)
-                model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-                self._model = genai.GenerativeModel(model_name)
-                logger.info(f"EntityExtractor: Gemini fallback initialised ({model_name})")
-            except Exception as e:
-                logger.error(f"Gemini init failed: {e}")
-                self._model = None
+            logger.info(f"EntityExtractor: OpenAI fallback initialised")
 
         self._local = LocalExtractor()
-        self._gemini = GeminiFallback(self._model)
+        self._openai_fallback = OpenAIFallback(self.client)
 
     # ------------------------------------------------------------------
     # Public API
@@ -750,25 +744,25 @@ class EntityExtractor:
                 unit=None,              # Phase 09
             ))
 
-        # ── Layer 2: Gemini fallback for remaining fields ──────────────
+        # ── Layer 2: OpenAI fallback for remaining fields ──────────────
         locally_found = {e.entity_type for e in result.entities}
         missing = [f for f in entity_schema if f not in locally_found]
-        telemetry.gemini_fallback_fields = len(missing)
+        telemetry.openai_fallback_fields = len(missing)
 
         if missing and self._model is not None:
-            # Convert PDF page 1 to image for Gemini
+            # Convert PDF page 1 to image for OpenAI
             page_image = self._get_page_image(pdf_path, page_num=1)
 
             if page_image is not None:
-                telemetry.gemini_calls += 1
-                gemini_data = self._gemini.extract_missing(missing, doc_type, page_image)
-                telemetry.gemini_recovered = len(gemini_data)
+                telemetry.openai_calls += 1
+                openai_data = self._openai_fallback.extract_missing(missing, doc_type, page_image)
+                telemetry.openai_recovered = len(openai_data)
 
-                for entity_type, value in gemini_data.items():
-                    # Map Gemini value back to OCR bbox
+                for entity_type, value in openai_data.items():
+                    # Map OpenAI value back to OCR bbox
                     bbox, ocr_conf = _multi_token_bbox(value, all_tokens)
                     page = self._value_page(value, all_tokens)
-                    conf = self._gemini_confidence(bbox, ocr_conf)
+                    conf = self._openai_fallback_confidence(bbox, ocr_conf)
 
                     result.entities.append(ExtractedEntity(
                         entity_type=entity_type,
@@ -780,10 +774,10 @@ class EntityExtractor:
                         unit=None,
                     ))
             else:
-                logger.warning("Could not load page image for Gemini -- skipping fallback.")
+                logger.warning("Could not load page image for OpenAI -- skipping fallback.")
         elif missing:
             logger.info(
-                f"Gemini not available. {len(missing)} fields not extracted: {missing}"
+                f"OpenAI not available. {len(missing)} fields not extracted: {missing}"
             )
 
         # ── Count failures (fields still missing after both layers) ───
@@ -827,7 +821,7 @@ class EntityExtractor:
     # ------------------------------------------------------------------
 
     def _get_page_image(self, pdf_path: str, page_num: int = 1):
-        """Convert a PDF page to a PIL Image for Gemini Vision."""
+        """Convert a PDF page to a PIL Image for OpenAI Vision."""
         try:
             from pdf2image import convert_from_path
             images = convert_from_path(pdf_path, first_page=page_num, last_page=page_num)
@@ -841,11 +835,11 @@ class EntityExtractor:
         tok = map_to_bbox(value, ocr_tokens)
         return tok.page if tok else 1
 
-    def _gemini_confidence(self, bbox: list, ocr_conf: float) -> float:
+    def _openai_confidence(self, bbox: list, ocr_conf: float) -> float:
         """
-        Confidence for a Gemini-extracted entity.
-        - If bbox matched an OCR token: blend Gemini base (0.82) with OCR conf
-        - If no bbox match: lower confidence (0.55) -- Gemini found it but we couldn't verify
+        Confidence for a OpenAI-extracted entity.
+        - If bbox matched an OCR token: blend OpenAI base (0.82) with OCR conf
+        - If no bbox match: lower confidence (0.55) -- OpenAI found it but we couldn't verify
         """
         if bbox == _DEFAULT_BBOX or bbox == [0, 0, 0, 0]:
             return 0.55

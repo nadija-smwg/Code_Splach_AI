@@ -2,7 +2,7 @@
 # Phase 09 — Canonical Normalization (Three-Tier)
 # Tier 1: deterministic cache-key   (token sort, zero cost)
 # Tier 2: PostgreSQL norm_cache      (shared persistent cache)
-# Tier 3: Gemini semantic LLM        (cache-miss fallback only)
+# Tier 3: OpenAI semantic LLM        (cache-miss fallback only)
 
 import logging
 import os
@@ -43,7 +43,7 @@ class EntityNormalizer:
     }
 
     # ------------------------------------------------------------------
-    # Construction — wire up DB pool and Gemini client
+    # Construction — wire up DB pool and OpenAI client
     # ------------------------------------------------------------------
 
     def __init__(self):
@@ -71,7 +71,7 @@ class EntityNormalizer:
         except Exception as exc:
             logger.warning("PostgreSQL cache unavailable: %s", exc)
 
-        # ── Tier 3 — Gemini ────────────────────────────────────────────
+        # ── Tier 3 — OpenAI ────────────────────────────────────────────
         self._gemini = None
         self._gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
@@ -84,11 +84,11 @@ class EntityNormalizer:
                 genai.configure(api_key=api_key)
                 self._gemini = genai.GenerativeModel(self._gemini_model)
                 logger.info(
-                    "EntityNormalizer: Gemini enabled model=%s",
+                    "EntityNormalizer: OpenAI enabled model=%s",
                     self._gemini_model,
                 )
             except Exception as exc:
-                logger.warning("Gemini init failed: %s", exc)
+                logger.warning("OpenAI init failed: %s", exc)
 
     # ==================================================================
     # PUBLIC API
@@ -239,7 +239,7 @@ class EntityNormalizer:
                 "warn": False,
             }
 
-        # Tier 3 — Gemini ───────────────────────────────────────────────
+        # Tier 3 — OpenAI ───────────────────────────────────────────────
         canonical = self._llm_canonicalize(entity_type, raw_value)
         if not canonical:
             canonical = raw_value.strip()
@@ -403,14 +403,14 @@ Return ONLY the canonical value. No explanation."""
                         import time, re
                         match = re.search(r"Please retry in ([\d\.]+)s", error_msg)
                         wait_sec = float(match.group(1)) + 1 if match else 20.0
-                        logger.warning(f"Gemini 429 Quota Exceeded in Normalizer. Waiting {wait_sec:.1f}s before retry (Attempt {attempt+1}/{max_retries})...")
+                        logger.warning(f"OpenAI 429 Quota Exceeded in Normalizer. Waiting {wait_sec:.1f}s before retry (Attempt {attempt+1}/{max_retries})...")
                         time.sleep(wait_sec)
                     else:
-                        logger.warning("Gemini canonicalization failed after %d attempts: %s", attempt+1, e)
+                        logger.warning("OpenAI canonicalization failed after %d attempts: %s", attempt+1, e)
                         return raw_value.strip()
 
         except Exception as exc:
-            logger.warning("Gemini canonicalization setup failed: %s", exc)
+            logger.warning("OpenAI canonicalization setup failed: %s", exc)
             return raw_value.strip()
 
     # ==================================================================

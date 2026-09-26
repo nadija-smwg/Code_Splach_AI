@@ -8,9 +8,9 @@ Extracts line items from tabular sections of Commercial Invoices and Packing Lis
 
 Architecture
 ------------
-  Primary   : Gemini Vision reads the table image -> returns structured JSON rows
+  Primary   : OpenAI Vision reads the table image -> returns structured JSON rows
   Bbox map  : Each row's description is matched back to OCR tokens for bounding box
-  Fallback  : If Gemini fails OR no API key -> returns realistic mock line items
+  Fallback  : If OpenAI fails OR no API key -> returns realistic mock line items
               (acceptable for hackathon demo per spec section 6.2)
 
 Key constraints from spec
@@ -73,7 +73,7 @@ class TableExtraction:
 
 
 # ---------------------------------------------------------------------------
-# Gemini prompt for table extraction
+# OpenAI prompt for table extraction
 # ---------------------------------------------------------------------------
 
 TABLE_EXTRACTION_PROMPT = """Extract ALL line items from the table in this document image.
@@ -92,7 +92,7 @@ Each element must have exactly these keys (use 0 for missing numeric values, emp
 Return empty array [] if no line-item table is found in this document."""
 
 # ---------------------------------------------------------------------------
-# Realistic mock line items (used when Gemini unavailable or extraction fails)
+# Realistic mock line items (used when OpenAI unavailable or extraction fails)
 # These match the synthetic sample documents in backend/sample_docs/
 # ---------------------------------------------------------------------------
 
@@ -141,7 +141,7 @@ MOCK_LINE_ITEMS = [
 
 
 def _strip_fences(text: str) -> str:
-    """Remove markdown code fences Gemini sometimes wraps JSON in."""
+    """Remove markdown code fences OpenAI sometimes wraps JSON in."""
     text = text.strip()
     text = re.sub(r"^`[a-z]*\n?", "", text)
     text = re.sub(r"\n?`$", "", text)
@@ -203,18 +203,12 @@ class TableExtractor:
     """
 
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        if not api_key or api_key == "your_key_here":
-            logger.warning(
-                "GEMINI_API_KEY not set -- TableExtractor will use mock line items."
-            )
-            self._model = None
+        from .openai_client import OpenAIClient
+        self.client = OpenAIClient()
+        if self.client._client is None:
+            logger.warning("OPENAI_API_KEY not set. TableExtractor will fail.")
         else:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-            self._model = genai.GenerativeModel(model_name)
-            logger.info(f"TableExtractor initialised with {model_name}")
+            logger.info("TableExtractor initialised with OpenAI")
 
     def extract(
         self,
@@ -238,7 +232,7 @@ class TableExtractor:
         Returns
         -------
         TableExtraction with populated items list.
-        If Gemini fails, falls back to mock items with is_mock=True.
+        If OpenAI fails, falls back to mock items with is_mock=True.
         """
         # Only commercial invoices and packing lists have line-item tables
         if doc_type not in ("commercial_invoice", "packing_list", "unknown"):
@@ -248,7 +242,7 @@ class TableExtractor:
 
         all_tokens = [tok for page in ocr_output.pages for tok in page.tokens]
 
-        # ── Try Gemini Vision ──────────────────────────────────────────────
+        # ── Try OpenAI Vision ──────────────────────────────────────────────
         if self._model is not None:
             items = self._extract_with_gemini(page_image, all_tokens, page_num)
             if items:
@@ -258,7 +252,7 @@ class TableExtractor:
                     total_rows=len(items),
                     extraction_method="gemini_vision",
                 )
-            logger.warning("Gemini returned no rows -- falling back to mock items.")
+            logger.warning("OpenAI returned no rows -- falling back to mock items.")
 
         # ── Fallback: Mock line items ──────────────────────────────────────
         return self._make_mock_result(document_id, all_tokens, page_num)
@@ -293,20 +287,20 @@ class TableExtractor:
     def _extract_with_gemini(
         self, page_image, all_tokens: list, page_num: int
     ) -> list[LineItem]:
-        """Call Gemini Vision with the table prompt and parse the response."""
+        """Call OpenAI Vision with the table prompt and parse the response."""
         try:
             response = self._model.generate_content([TABLE_EXTRACTION_PROMPT, page_image])
             raw_text = _strip_fences(response.text)
             rows: list[dict] = json.loads(raw_text)
         except json.JSONDecodeError as e:
-            logger.error(f"Table: Gemini returned non-JSON: {e}")
+            logger.error(f"Table: OpenAI returned non-JSON: {e}")
             return []
         except Exception as e:
-            logger.error(f"Table: Gemini API error: {e}")
+            logger.error(f"Table: OpenAI API error: {e}")
             return []
 
         if not isinstance(rows, list):
-            logger.warning("Table: Gemini returned non-list JSON")
+            logger.warning("Table: OpenAI returned non-list JSON")
             return []
 
         line_items: list[LineItem] = []
