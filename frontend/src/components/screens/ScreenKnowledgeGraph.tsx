@@ -45,6 +45,9 @@ function nodeColor(node: GraphNode): { background: string; border: string; highl
 
 export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const graphPanelRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const networkRef = useRef<any>(null);
   const { shipmentId } = useShipment();
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +55,7 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [nodeCount, setNodeCount] = useState(0);
   const [edgeCount, setEdgeCount] = useState(0);
+  const [isGraphFullscreen, setIsGraphFullscreen] = useState(false);
 
   const activeId = shipmentId ?? 'demo-shipment';
 
@@ -107,6 +111,7 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
         );
 
         network = new Network(containerRef.current!, { nodes, edges }, VIS_OPTIONS);
+        networkRef.current = network;
 
         // vis-network starts at its default scale, which leaves small graphs as an
         // unreadable cluster in the centre of a large canvas. Fit after physics has
@@ -130,8 +135,35 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
 
     return () => {
       network?.destroy();
+      if (networkRef.current === network) networkRef.current = null;
     };
   }, [graphData, loading]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFullscreen = document.fullscreenElement === graphPanelRef.current;
+      setIsGraphFullscreen(isFullscreen);
+      window.setTimeout(() => {
+        networkRef.current?.redraw();
+        networkRef.current?.fit({ animation: false, padding: isFullscreen ? 100 : 72 });
+      }, 100);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleGraphFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === graphPanelRef.current) {
+        await document.exitFullscreen();
+      } else {
+        await graphPanelRef.current?.requestFullscreen();
+      }
+    } catch {
+      onTriggerToast({ title: 'Unable to open full screen', message: 'Your browser did not allow full-screen mode.', type: 'error' });
+    }
+  };
 
   const handleExport = () => {
     if (!graphData) return;
@@ -159,7 +191,12 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 items-start">
         {/* Graph Canvas */}
-        <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm relative overflow-hidden min-h-[540px] flex flex-col">
+        <div
+          ref={graphPanelRef}
+          className={`lg:col-span-7 bg-surface-container-lowest border border-outline-variant/30 shadow-sm relative overflow-hidden flex flex-col ${
+            isGraphFullscreen ? 'h-screen w-screen rounded-none border-0' : 'min-h-[540px] rounded-xl'
+          }`}
+        >
           <div className="p-3 border-b border-outline-variant/30 bg-surface-container-low/50 flex items-center justify-between text-xs">
             <span className="font-semibold text-on-surface">{nodeCount} Nodes • {edgeCount} Edges</span>
             <div className="flex items-center gap-3 text-[11px] text-on-surface-variant font-medium">
@@ -167,6 +204,14 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#6366f1]"></span> Document</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 bg-purple-400"></span> Canonical Field</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#10b981]"></span> Source Assertion</span>
+              <button
+                onClick={toggleGraphFullscreen}
+                className="ml-1 inline-flex items-center gap-1 rounded-md border border-outline-variant/40 px-2 py-1 text-on-surface hover:bg-surface-container transition-colors"
+                title={isGraphFullscreen ? 'Exit full screen' : 'Open graph in full screen'}
+              >
+                <span className="material-symbols-outlined text-[15px]">{isGraphFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
+                <span>{isGraphFullscreen ? 'Exit full screen' : 'Full screen'}</span>
+              </button>
             </div>
           </div>
 
