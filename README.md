@@ -298,7 +298,7 @@ npm run dev
 ants/
 ├── backend/                  # FastAPI backend
 │   ├── ai_pipeline/          # OCR, classification, entity extraction (Nadija)
-│   ├── reasoning/            # Neuro-symbolic engine, XAI compiler (Aloka)
+│   ├── reasoning/            # Neuro-symbolic engine(Kaveen), XAI compiler (Aloka)
 │   ├── api/                  # REST API routes
 │   ├── database/             # SQLAlchemy models + DB connection
 │   ├── demo/                 # Pre-processed demo PDFs
@@ -306,7 +306,7 @@ ants/
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   └── .env.example
-├── frontend/                 # React + TypeScript frontend (Kaveen)
+├── frontend/                 # React + TypeScript frontend (Nadija)
 │   ├── src/
 │   │   ├── components/       # All UI components
 │   │   ├── pages/            # Page-level views
