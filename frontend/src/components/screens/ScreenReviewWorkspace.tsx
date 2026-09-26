@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useShipment } from '../../hooks/useShipment';
-import { getDiscrepancies, resolveDiscrepancy, getExtraction, getKeyFields } from '../../utils/api';
+import { getDiscrepancies, getExtraction, getKeyFields, saveFieldResolution } from '../../utils/api';
 import type { Discrepancy, DocumentExtraction, FieldAssertion, ResolvedKeyField } from '../../types';
 import { KeyFieldReconciliationPanel } from '../review/KeyFieldReconciliationPanel';
 
@@ -20,9 +20,7 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
   const [activeDiscrepancy, setActiveDiscrepancy] = useState<Discrepancy | null>(null);
   const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([]);
 
-  const [selectedDecision, setSelectedDecision] = useState('B');
-  const [isResolved, setIsResolved] = useState(false);
-  const [isResolving, setIsResolving] = useState(false);
+  const [resolvingFieldId, setResolvingFieldId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!shipmentId) {
@@ -46,7 +44,6 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
       
       if (discs.length > 0) {
         setActiveDiscrepancy(discs[0]);
-        setIsResolved(discs[0].status === 'resolved');
       }
     })
     .catch((err) => {
@@ -83,20 +80,43 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
   }
 
   const handleExecuteResolution = async () => {
-    if (isResolved || !activeDiscrepancy) return;
-    setIsResolving(true);
+    if (!activeDiscrepancy) return;
+    const field = keyFields.find(item => item.canonical_field_id === activeDiscrepancy.canonical_field_id);
+    if (field) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      onTriggerToast({ title: 'Choose a resolution', message: `Use the source values or corrected-value form for ${field.label}.`, type: 'info' });
+    }
+  };
+
+  const handleFieldResolution = async (
+    field: ResolvedKeyField,
+    resolution: { source_assertion_id?: string; manual_value?: string; reason?: string },
+  ) => {
+    if (!shipmentId) return;
+    setResolvingFieldId(field.canonical_field_id);
     try {
-      await resolveDiscrepancy(shipmentId, activeDiscrepancy.discrepancy_id, selectedDecision);
-      setIsResolved(true);
-      onTriggerToast({ title: 'Discrepancy Harmonized', message: 'Resolution saved and applied to cache.', type: 'success' });
-    } catch (err) {
-      onTriggerToast({ title: 'Resolution Failed', message: 'Failed to update resolution status.', type: 'error' });
+      const result = await saveFieldResolution(shipmentId, {
+        canonical_field_id: field.canonical_field_id,
+        ...resolution,
+      });
+      setKeyFields(current => current.map(item =>
+        item.canonical_field_id === field.canonical_field_id ? result.field : item,
+      ));
+      const refreshed = await getDiscrepancies(shipmentId);
+      setDiscrepancies(refreshed.discrepancies || []);
+      setActiveDiscrepancy(current => current?.canonical_field_id === field.canonical_field_id ? null : current);
+      onTriggerToast({ title: 'Resolution saved', message: `${field.label} now uses the reviewer-approved value.`, type: 'success' });
+    } catch {
+      onTriggerToast({ title: 'Resolution failed', message: 'The reviewer decision could not be saved.', type: 'error' });
     } finally {
-      setIsResolving(false);
+      setResolvingFieldId(null);
     }
   };
 
   const activeDoc = extractions[activeDocIndex];
+  const unresolvedFieldCount = keyFields.filter(field =>
+    field.status === 'conflict' || field.status === 'warning' || field.status === 'pending',
+  ).length;
 
   const isEntityOutlier = (documentId: string, entity: { entity_type: string; value: string; page: number }) =>
     keyFields.some(field => field.assertions.some(assertion =>
@@ -125,8 +145,8 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-1.5 bg-primary-fixed/30 text-tertiary px-3 py-1 rounded-full text-xs font-semibold">
-            <span className={`h-2 w-2 rounded-full ${isResolved ? 'bg-secondary' : 'bg-primary-container animate-pulse'}`}></span>
-            <span>{isResolved ? 'Review complete' : 'In review'}</span>
+            <span className={`h-2 w-2 rounded-full ${unresolvedFieldCount ? 'bg-primary-container animate-pulse' : 'bg-secondary'}`}></span>
+            <span>{unresolvedFieldCount ? 'In review' : 'Fields resolved'}</span>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-between xl:justify-end text-xs">
@@ -143,18 +163,21 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
             <span>Export CUSDEC XML</span>
           </button>
           {activeDiscrepancy && (
-            <button onClick={handleExecuteResolution} disabled={isResolved || isResolving}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-medium transition-all shadow-md ${isResolved ? 'bg-secondary opacity-90' : 'bg-primary-container hover:bg-primary'} ${isResolving ? 'opacity-70 cursor-wait' : ''}`}>
-              <span className={`material-symbols-outlined text-[16px] ${isResolving ? 'animate-spin' : ''}`}>
-                {isResolving ? 'refresh' : (isResolved ? 'check_circle' : 'verified_user')}
-              </span>
-              <span>{isResolving ? 'Saving...' : (isResolved ? 'Marked reviewed' : 'Mark as reviewed')}</span>
+            <button onClick={handleExecuteResolution}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-medium transition-all shadow-md bg-primary-container hover:bg-primary">
+              <span className="material-symbols-outlined text-[16px]">rule</span>
+              <span>Resolve selected field</span>
             </button>
           )}
         </div>
       </div>
 
-      <KeyFieldReconciliationPanel fields={keyFields} onSelectAssertion={selectAssertion} />
+      <KeyFieldReconciliationPanel
+        fields={keyFields}
+        onSelectAssertion={selectAssertion}
+        onResolveField={handleFieldResolution}
+        resolvingFieldId={resolvingFieldId}
+      />
 
       {/* Split Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -315,25 +338,9 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
                 </div>
               </div>
 
-              {/* Decision Options */}
-              <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
-                <h3 className="text-xs font-bold text-on-surface">Resolution options</h3>
-                {[
-                  { key: 'A', label: `Use ${activeDiscrepancy.value_a}`, risk: 'Source A', desc: 'Keep the value from the first source document.' },
-                  { key: 'B', label: 'Use suggested action', risk: 'Suggested', desc: activeDiscrepancy.xai_block.layer4.recommended_action },
-                ].map((opt) => (
-                  <div key={opt.key} onClick={() => !isResolved && setSelectedDecision(opt.key)}
-                    className={`p-3 rounded-lg text-xs border transition-all ${isResolved ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${selectedDecision === opt.key ? 'border-primary bg-primary-fixed/20 shadow-sm' : 'border-outline-variant/30 bg-surface-container-low'}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <input type="radio" checked={selectedDecision === opt.key} readOnly className="accent-primary" />
-                        <span className="font-semibold text-on-surface">{opt.label}</span>
-                      </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded ${opt.key === 'B' ? 'bg-secondary-container/20 text-secondary font-semibold' : 'text-outline bg-surface-container'}`}>{opt.risk}</span>
-                    </div>
-                    <p className="text-[11px] text-on-surface-variant mt-1 pl-5">{opt.desc}</p>
-                  </div>
-                ))}
+              <div className="bg-primary-fixed/15 rounded-xl p-4 border border-primary/20 text-xs">
+                <h3 className="font-bold text-on-surface">Manual resolution</h3>
+                <p className="text-on-surface-variant mt-1">Use the field panel above to select verified evidence or enter a corrected value with a reason. The decision is saved and remains traceable to the source documents.</p>
               </div>
             </>
           ) : (

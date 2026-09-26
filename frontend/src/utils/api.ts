@@ -82,7 +82,15 @@ export async function getActiveRules(): Promise<RuleCheck[]> {
   const { data } = await api.get<RuleCheck[]>('/rules/active');
   return data;
 }
-export async function resolveDiscrepancy(shipmentId: string, discrepancyId: string, decision: string): Promise<{ status: string }> {
-  const { data } = await api.post(`/shipments/${shipmentId}/discrepancies/${discrepancyId}/resolve`, { decision });
+export async function saveFieldResolution(
+  shipmentId: string,
+  resolution: {
+    canonical_field_id: string;
+    source_assertion_id?: string;
+    manual_value?: string;
+    reason?: string;
+  },
+): Promise<{ status: string; field: import('../types').ResolvedKeyField }> {
+  const { data } = await api.post(`/shipments/${shipmentId}/field-resolutions`, resolution);
   return data;
 }

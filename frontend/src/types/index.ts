@@ -108,11 +108,12 @@ export interface ResolvedKeyField {
   canonical_field_id: string;
   entity_type: string;
   label: string;
-  status: 'match' | 'conflict' | 'warning' | 'pending';
+  status: 'match' | 'conflict' | 'warning' | 'pending' | 'resolved';
   consensus_value: number | string;
   unit: string | null;
   resolution_confidence: number;
   assertions: FieldAssertion[];
+  resolution?: { source_assertion_id?: string | null; reason?: string | null; resolved_by?: string };
 }
 
 export interface KeyFieldResponse {
