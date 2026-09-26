@@ -9,8 +9,8 @@ const VIS_OPTIONS = {
   nodes: {
     shape: 'box',
     borderRadius: 8,
-    font: { face: 'Inter', size: 12, color: '#f1f5f9' },
-    margin: { top: 8, right: 12, bottom: 8, left: 12 },
+    font: { face: 'Inter', size: 14, color: '#f1f5f9' },
+    margin: { top: 10, right: 14, bottom: 10, left: 14 },
     shadow: true,
   },
   edges: {
@@ -21,8 +21,8 @@ const VIS_OPTIONS = {
   },
   physics: {
     enabled: true,
-    stabilization: { enabled: true, iterations: 200 },
-    barnesHut: { gravitationalConstant: -3000, springLength: 140 },
+    stabilization: { enabled: true, iterations: 250 },
+    barnesHut: { gravitationalConstant: -3500, springLength: 190 },
   },
   interaction: {
     hover: true,
@@ -87,7 +87,7 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
             color: nodeColor(n),
             title: `Type: ${n.type}\nID: ${n.id}`,
             shape: n.type === 'shipment' ? 'diamond' : n.type === 'document' ? 'box' : n.type === 'canonical_field' ? 'hexagon' : 'ellipse',
-            font: { color: '#f1f5f9', face: 'Inter', size: 12 },
+            font: { color: '#f1f5f9', face: 'Inter', size: 14 },
           }))
         );
 
@@ -107,6 +107,14 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
         );
 
         network = new Network(containerRef.current!, { nodes, edges }, VIS_OPTIONS);
+
+        // vis-network starts at its default scale, which leaves small graphs as an
+        // unreadable cluster in the centre of a large canvas. Fit after physics has
+        // assigned final positions, then stop physics so the view remains stable.
+        network.once('stabilizationIterationsDone', () => {
+          network.fit({ animation: false, padding: 72 });
+          network.setOptions({ physics: false });
+        });
 
         network.on('selectNode', (params: { nodes: string[] }) => {
           if (params.nodes.length > 0) {
