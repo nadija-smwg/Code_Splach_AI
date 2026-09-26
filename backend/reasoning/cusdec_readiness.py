@@ -55,13 +55,15 @@ def _field_index(fields: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return {str(field.get("entity_type")): field for field in fields}
 
 
-def _profile(documents: list[dict[str, Any]]) -> dict[str, Any]:
+def _profile(documents: list[dict[str, Any]], declaration_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """Collect explicit declaration metadata without inventing any values."""
     profile: dict[str, Any] = {}
     for document in documents:
         candidate = document.get("declaration_profile")
         if isinstance(candidate, dict):
             profile.update({key: value for key, value in candidate.items() if value not in (None, "")})
+    if declaration_metadata:
+        profile.update({key: value for key, value in declaration_metadata.items() if value not in (None, "")})
     return profile
 
 
@@ -80,7 +82,11 @@ def _positive_number(value: Any) -> bool:
         return False
 
 
-def build_cusdec_readiness(documents: list[dict[str, Any]], fields: list[dict[str, Any]]) -> dict[str, Any]:
+def build_cusdec_readiness(
+    documents: list[dict[str, Any]],
+    fields: list[dict[str, Any]],
+    declaration_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Return a UI-safe and API-safe submission readiness assessment."""
     blockers: list[dict[str, str]] = []
     resolved = _field_index(fields)
@@ -119,7 +125,7 @@ def build_cusdec_readiness(documents: list[dict[str, Any]], fields: list[dict[st
             "No extracted goods line items are available for commodity and valuation validation.",
         ))
 
-    profile = _profile(documents)
+    profile = _profile(documents, declaration_metadata)
     for key, label in PROFILE_REQUIREMENTS.items():
         if profile.get(key) in (None, ""):
             blockers.append(_issue("MISSING_DECLARATION_METADATA", key, f"{label} has not been supplied.", source="declaration profile"))

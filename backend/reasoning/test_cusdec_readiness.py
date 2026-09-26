@@ -64,3 +64,16 @@ def test_schema_validation_remains_a_hard_blocker_after_data_checks_pass():
     readiness = build_cusdec_readiness([_complete_document()], _complete_fields())
     assert readiness["blocker_count"] == 1
     assert readiness["blockers"][0]["code"] == "OFFICIAL_SCHEMA_VALIDATION_REQUIRED"
+
+
+def test_reviewer_declaration_metadata_satisfies_profile_requirements():
+    document = _complete_document()
+    document.pop("declaration_profile")
+    readiness = build_cusdec_readiness(
+        [document],
+        _complete_fields(),
+        {key: f"verified-{key}" for key in PROFILE_REQUIREMENTS},
+    )
+
+    assert not any(blocker["code"] == "MISSING_DECLARATION_METADATA" for blocker in readiness["blockers"])
+    assert readiness["profile"]["consignee_code"] == "verified-consignee_code"

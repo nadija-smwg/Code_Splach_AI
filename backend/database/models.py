@@ -137,3 +137,17 @@ class FieldResolution(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+
+class DeclarationMetadata(Base):
+    """Reviewer-entered declaration details required in addition to source documents."""
+    __tablename__ = 'declaration_metadata'
+    __table_args__ = (UniqueConstraint('shipment_id', 'field_name', name='uq_declaration_metadata'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shipment_id = Column(String(100), nullable=False)
+    field_name = Column(String(50), nullable=False)
+    value = Column(Text, nullable=False)
+    updated_by = Column(String(100), nullable=False, default='reviewer')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+

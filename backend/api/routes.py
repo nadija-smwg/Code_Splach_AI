@@ -160,6 +160,25 @@ def _get_field_resolutions(shipment_id: str) -> dict:
         return {}
 
 
+def _get_declaration_metadata(shipment_id: str) -> dict:
+    """Load reviewer-supplied Customs/profile details for the active dossier."""
+    try:
+        from database.connection import SessionLocal
+        from database.models import DeclarationMetadata
+
+        db = SessionLocal()
+        try:
+            rows = db.query(DeclarationMetadata).filter(
+                DeclarationMetadata.shipment_id == shipment_id
+            ).all()
+            return {row.field_name: row.value for row in rows if row.value not in (None, "")}
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("Could not load declaration metadata for %s: %s", shipment_id, exc)
+        return {}
+
+
 def _resolve_shipment_fields(shipment_id: str, documents: list) -> list:
     """Resolve source assertions, then apply persisted reviewer decisions."""
     from reasoning.entity_resolution import apply_manual_resolutions, resolve_documents
@@ -462,6 +481,68 @@ async def save_field_resolution(shipment_id: str, resolution: dict):
     return {"status": "resolved", "field": saved}
 
 
+@router.post("/shipments/{shipment_id}/declaration-metadata")
+async def save_declaration_metadata(shipment_id: str, payload: dict):
+    """Save verified Customs/profile fields supplied by the declarant or reviewer."""
+    documents = _get_documents_for_shipment(shipment_id)
+    if not documents:
+        raise HTTPException(status_code=404, detail="No processed documents were found for this dossier.")
+
+    from reasoning.cusdec_readiness import PROFILE_REQUIREMENTS, build_cusdec_readiness
+
+    values = payload.get("values")
+    if not isinstance(values, dict):
+        raise HTTPException(status_code=400, detail="values must be an object of declaration fields.")
+
+    invalid = set(values) - set(PROFILE_REQUIREMENTS)
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported declaration field(s): {', '.join(sorted(invalid))}.",
+        )
+
+    cleaned = {
+        key: str(value).strip()
+        for key, value in values.items()
+        if value is not None and str(value).strip()
+    }
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Enter at least one declaration value to save.")
+    if any(len(value) > 200 for value in cleaned.values()):
+        raise HTTPException(status_code=400, detail="Declaration values must be 200 characters or fewer.")
+
+    try:
+        from database.connection import SessionLocal
+        from database.models import DeclarationMetadata
+
+        db = SessionLocal()
+        try:
+            for field_name, value in cleaned.items():
+                row = db.query(DeclarationMetadata).filter(
+                    DeclarationMetadata.shipment_id == shipment_id,
+                    DeclarationMetadata.field_name == field_name,
+                ).first()
+                if row is None:
+                    row = DeclarationMetadata(shipment_id=shipment_id, field_name=field_name)
+                    db.add(row)
+                row.value = value
+                row.updated_by = "reviewer"
+            db.commit()
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.exception("Could not save declaration metadata for %s", shipment_id)
+        raise HTTPException(status_code=503, detail="The declaration details could not be saved.") from exc
+
+    fields = _resolve_shipment_fields(shipment_id, documents)
+    metadata = _get_declaration_metadata(shipment_id)
+    return {
+        "status": "saved",
+        "profile": metadata,
+        "readiness": build_cusdec_readiness(documents, fields, metadata),
+    }
+
+
 @router.get("/shipments/{shipment_id}/discrepancies")
 async def get_discrepancies(shipment_id: str):
     from reasoning.rule_evaluator import RuleEvaluator
@@ -546,7 +627,11 @@ async def export_asycuda(shipment_id: str):
 
     from reasoning.cusdec_readiness import build_cusdec_readiness
 
-    readiness = build_cusdec_readiness(documents, _resolve_shipment_fields(shipment_id, documents))
+    readiness = build_cusdec_readiness(
+        documents,
+        _resolve_shipment_fields(shipment_id, documents),
+        _get_declaration_metadata(shipment_id),
+    )
     if not readiness["export_allowed"]:
         raise HTTPException(
             status_code=422,
@@ -577,7 +662,7 @@ async def get_cusdec_readiness(shipment_id: str):
     fields = _resolve_shipment_fields(shipment_id, documents)
     return {
         "shipment_id": shipment_id,
-        **build_cusdec_readiness(documents, fields),
+        **build_cusdec_readiness(documents, fields, _get_declaration_metadata(shipment_id)),
     }
 
 
