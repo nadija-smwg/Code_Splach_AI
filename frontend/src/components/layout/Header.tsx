@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const primaryNavItems = [
@@ -19,13 +19,23 @@ export function Header() {
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const isOverview = currentPath === '/';
+  const useTransparentStyle = isOverview && !isScrolled;
 
   return (
     <>
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isOverview
+        useTransparentStyle
           ? 'bg-transparent border-b border-white/0 shadow-none'
           : 'bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] border-b border-outline-variant/30'
       }`}>
@@ -45,14 +55,14 @@ export function Header() {
 
             <Link to="/" className="flex items-center gap-1.5 group">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105 ${
-                isOverview ? 'bg-white/20 backdrop-blur-md border border-white/30' : 'bg-primary-container'
+                useTransparentStyle ? 'bg-white/20 backdrop-blur-md border border-white/30' : 'bg-primary-container'
               }`}>
                 <span className="material-symbols-outlined text-[20px]">token</span>
               </div>
               <span className={`text-lg tracking-tight font-semibold ${
-                isOverview ? 'text-white' : 'text-on-surface'
+                useTransparentStyle ? 'text-white' : 'text-on-surface'
               }`}>
-                Clearance<span className={isOverview ? 'text-[#5b8fd4]' : 'text-primary-container'}>X</span>
+                Clearance<span className={useTransparentStyle ? 'text-[#5b8fd4]' : 'text-primary-container'}>X</span>
               </span>
               <span className={`text-[11px] px-1.5 py-0.5 rounded font-semibold ml-1 hidden sm:inline-block ${
                 isOverview
