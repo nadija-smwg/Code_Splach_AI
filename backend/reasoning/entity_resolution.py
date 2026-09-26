@@ -7,7 +7,10 @@ graph and review UI to show both consensus and conflicting evidence.
 from __future__ import annotations
 
 import re
+from types import SimpleNamespace
 from typing import Any
+
+from ai_pipeline.party_roles import classify_party_role
 
 
 # These are the extracted values used by generate_cusdec_xml().  The resolver
@@ -45,6 +48,25 @@ def _is_number(value: Any) -> bool:
 
 def _same_numeric(left: float, right: float) -> bool:
     return abs(float(left) - float(right)) <= 0.01
+
+
+def _legacy_consignee_role(document: dict[str, Any], entity: dict[str, Any]) -> str | None:
+    """Recover party-role evidence from OCR saved before role metadata existed."""
+    raw_tokens = document.get("raw_ocr") or []
+    if not raw_tokens:
+        return None
+    tokens = [
+        SimpleNamespace(
+            text=str(token.get("text", "")),
+            page=int(token.get("page", 1)),
+            bbox=token.get("bbox", []),
+        )
+        for token in raw_tokens
+        if isinstance(token, dict)
+    ]
+    return classify_party_role(
+        str(entity.get("value", "")), entity.get("bbox", []), int(entity.get("page", 1)), tokens
+    )
 
 
 def _choose_consensus(assertions: list[dict[str, Any]]) -> tuple[Any, list[str]]:
@@ -90,8 +112,17 @@ def resolve_documents(shipment_id: str, documents: list[dict[str, Any]]) -> list
             # as role-labelled evidence.  They must never be allowed to become
             # a shipment-level consignee assertion.  The default keeps older
             # stored dossiers compatible until they are reprocessed.
-            if entity_type == "CONSIGNEE_NAME" and not entity.get("resolver_eligible", True):
-                continue
+            if entity_type == "CONSIGNEE_NAME":
+                if not entity.get("resolver_eligible", True):
+                    continue
+                # Existing dossiers predate party_role/resolver_eligible. Recheck
+                # their persisted OCR before allowing a company into the CUSDEC
+                # consignee field, so a carrier or bank stops creating a false
+                # discrepancy as soon as this version is deployed.
+                if "resolver_eligible" not in entity:
+                    legacy_role = _legacy_consignee_role(document, entity)
+                    if legacy_role and legacy_role != "consignee":
+                        continue
             canonical_id = f"shipment:{shipment_id}:field:{entity_type}"
             assertion_id = f"assertion:{doc_id}:{entity_type}:{index}"
             grouped.setdefault(entity_type, []).append({
