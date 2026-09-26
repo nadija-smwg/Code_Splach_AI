@@ -119,6 +119,9 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
         // more after the canvas settles) prevents the view being anchored at the
         // top-left and clipping nodes at the canvas edge.
         const fitNetwork = () => {
+          if (containerRef.current && network) {
+            network.setSize(containerRef.current.clientWidth + 'px', containerRef.current.clientHeight + 'px');
+          }
           network.redraw();
           network.fit({ animation: false });
         };
@@ -226,30 +229,32 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
             </div>
           </div>
 
-          {loading && (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3 text-on-surface-variant">
-                <span className="material-symbols-outlined text-[40px] animate-spin text-primary">sync</span>
-                <span className="text-sm">Loading knowledge graph...</span>
+          <div className="relative flex-1 flex flex-col min-h-[480px]">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-container-lowest/80 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-3 text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[40px] animate-spin text-primary">sync</span>
+                  <span className="text-sm">Loading knowledge graph...</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {error && (
-            <div className="flex-1 flex items-center justify-center p-8">
-              <div className="text-center">
-                <span className="material-symbols-outlined text-error text-[40px]">error</span>
-                <p className="text-sm text-on-surface mt-2 font-semibold">Failed to load graph</p>
-                <p className="text-xs text-on-surface-variant mt-1">{error}</p>
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-container-lowest/80 backdrop-blur-sm p-8">
+                <div className="text-center">
+                  <span className="material-symbols-outlined text-error text-[40px]">error</span>
+                  <p className="text-sm text-on-surface mt-2 font-semibold">Failed to load graph</p>
+                  <p className="text-xs text-on-surface-variant mt-1">{error}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           <div
-            ref={containerRef}
-            className={`flex-1 w-full min-h-[480px] ${loading || error ? 'hidden' : ''}`}
-            style={{ background: 'radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)' }}
-          />
+              ref={containerRef}
+              className="absolute inset-0 w-full h-full"
+              style={{ background: 'radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)' }}
+            />
+          </div>
         </div>
 
         {/* Inspector Panel */}
