@@ -115,26 +115,35 @@ export function ScreenAuditTrail({ onTriggerToast }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-container-high/30">
-                  {entries.map((row, idx) => (
-                    <tr key={idx} onClick={() => setSelectedIdx(idx)}
-                      className={`hover:bg-surface-container-low/60 cursor-pointer transition-colors ${selectedIdx === idx ? 'bg-primary/5' : ''}`}>
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-primary text-[14px]">{MODULE_ICON[row.module] || 'circle'}</span>
-                          <span className="font-semibold font-mono text-primary">{row.module}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-on-surface max-w-xs truncate">{row.action}</td>
-                      <td className="py-3 px-3 font-mono text-on-surface-variant">
-                        {row.confidence != null ? `${Math.round(row.confidence * 100)}%` : '—'}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${OUTCOME_STYLE[row.outcome] || 'bg-surface-container text-outline'}`}>
-                          {row.outcome}
-                        </span>
+                  {entries.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-12 text-center text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[32px] text-outline block mx-auto mb-2">history</span>
+                        No audit events recorded for this dossier.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    entries.map((row, idx) => (
+                      <tr key={idx} onClick={() => setSelectedIdx(idx)}
+                        className={`hover:bg-surface-container-low/60 cursor-pointer transition-colors ${selectedIdx === idx ? 'bg-primary/5' : ''}`}>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-primary text-[14px]">{MODULE_ICON[row.module] || 'circle'}</span>
+                            <span className="font-semibold font-mono text-primary">{row.module}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-on-surface max-w-xs truncate">{row.action}</td>
+                        <td className="py-3 px-3 font-mono text-on-surface-variant">
+                          {row.confidence != null ? `${Math.round(row.confidence * 100)}%` : '—'}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${OUTCOME_STYLE[row.outcome] || 'bg-surface-container text-outline'}`}>
+                            {row.outcome}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -165,11 +174,13 @@ export function ScreenAuditTrail({ onTriggerToast }: Props) {
                 <div className="text-[10px] text-outline uppercase">Action</div>
                 <div className="text-on-surface leading-relaxed">{selected.action}</div>
               </div>
-              {(selected as AuditEntry & { event_hash?: string }).event_hash && (
+              {selected.event_hash && (
                 <div>
                   <div className="text-[10px] text-outline uppercase mb-1">SHA-256 Event Hash</div>
                   <div className="p-2 bg-surface-container rounded font-mono text-[10px] break-all select-all text-on-surface">
-                    {(selected as AuditEntry & { event_hash?: string }).event_hash}...
+                    {selected.event_hash.length > 20
+                      ? `${selected.event_hash}...`
+                      : selected.event_hash}
                   </div>
                 </div>
               )}
@@ -184,7 +195,9 @@ export function ScreenAuditTrail({ onTriggerToast }: Props) {
             <span className="material-symbols-outlined text-secondary text-[20px]">workspace_premium</span>
             <div>
               <span className="font-bold block text-[11px]">Current dossier</span>
-              <span className="text-outline text-[10px]">Shipment: {activeId.slice(0, 16)}...</span>
+              <span className="text-outline text-[10px]">
+                Shipment: {activeId.length > 16 ? `${activeId.slice(0, 16)}...` : activeId}
+              </span>
             </div>
           </div>
         </div>

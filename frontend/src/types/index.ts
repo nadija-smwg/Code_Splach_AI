@@ -191,6 +191,7 @@ export interface AuditEntry {
   reasoning?: string;
   confidence: number | null;
   outcome: string;
+  event_hash?: string;
   details?: Record<string, unknown>;
 }
 

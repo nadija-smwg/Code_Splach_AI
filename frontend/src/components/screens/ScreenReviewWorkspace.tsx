@@ -89,8 +89,8 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
       await resolveDiscrepancy(shipmentId, activeDiscrepancy.discrepancy_id, selectedDecision);
       setIsResolved(true);
       onTriggerToast({ title: 'Discrepancy Harmonized', message: 'Resolution saved and applied to cache.', type: 'success' });
-    } catch (err) {
-      onTriggerToast({ title: 'Resolution Failed', message: 'Failed to update resolution status.', type: 'error' });
+    } catch (error) {
+      onTriggerToast({ title: 'Resolution Failed', message: error instanceof Error ? error.message : 'Failed to update resolution status.', type: 'error' });
     } finally {
       setIsResolving(false);
     }

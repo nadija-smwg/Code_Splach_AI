@@ -129,7 +129,7 @@ export function ScreenOverview({ onTriggerToast }: Props) {
         start: 'top top',
         end: 'bottom top',
         scrub: 1,
-        onUpdate: (self) => {
+        onUpdate: (self: any) => {
           const p = self.progress;
           const mobile = isMobile();
 
