@@ -47,7 +47,7 @@ You own **everything the user sees and interacts with**. The judges will evaluat
 | ~~25~~ | ~~Exact Evaluator Instructions~~ — ✅ **DONE** | ~~MUST~~ | ~~30 min~~ |
 | ~~26~~ | ~~Final Report~~ — ✅ **DONE** 🏁 **READY FOR SUBMISSION** | ~~MUST~~ | ~~1 hour~~ |
 | ~~27~~ | ~~Canonical Key Field Reconciliation UI~~ — ✅ **DONE** Added the Review Workspace reconciliation panel, consensus/outlier display, assertion-driven red highlighting, canonical graph visual semantics, readable discrepancy evidence labels, and a simplified discrepancy-resolution layout. | ~~MUST~~ | ~~2–3 hours~~ |
-| ~~28~~ | ~~Professional UI Copy Cleanup~~ — ✅ **DONE** Standardized sentence case, removed misleading integration and certification claims, simplified shared navigation and workflow copy, and corrected knowledge graph fitting for readable canvas use. | ~~MUST~~ | ~~1–2 hours~~ |
+| ~~28~~ | ~~Professional UI Copy Cleanup~~ — ✅ **DONE** Standardized sentence case, removed misleading integration and certification claims, simplified shared navigation and workflow copy, corrected knowledge graph fitting, and added an expanded full-screen graph view. | ~~MUST~~ | ~~1–2 hours~~ |
 
 **Total estimated: ~30–42 hours across 3–4 days**
 
