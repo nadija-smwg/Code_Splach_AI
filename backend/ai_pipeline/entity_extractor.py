@@ -744,7 +744,10 @@ class EntityExtractor:
 
             if page_image is not None:
                 telemetry.openai_calls += 1
-                openai_data = self._openai_fallback.extract_missing(missing, doc_type, page_image)
+                openai_data, openai_warning = self._openai_fallback.extract_missing(missing, doc_type, page_image)
+                if openai_warning:
+                    result.warnings.append(openai_warning)
+                
                 telemetry.openai_recovered = len(openai_data)
 
                 for entity_type, value in openai_data.items():

@@ -1,14 +1,18 @@
-import os
+﻿import os
 import logging
 from dataclasses import dataclass
 
-# Fix for PaddlePaddle 3.x on Windows CPU — MUST be set before paddleocr import
+# Fix for PaddlePaddle 3.x on Windows CPU â€” MUST be set before paddleocr import
 os.environ["FLAGS_use_onednn"] = "0"
 
 try:
+    import pyclipper
+    import cv2
     from paddleocr import PaddleOCR
-except Exception:  # pragma: no cover
-    PaddleOCR = None  # type: ignore
+except Exception as e:
+    import logging
+    logging.getLogger(__name__).error(f"PaddleOCR import failed: {e}")
+    PaddleOCR = None
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +48,7 @@ class OcrEngine:
     
     def extract(self, pdf_path: str) -> OcrOutput:
         """Extract text + bounding boxes from all pages of a PDF."""
-        from pdf2image import convert_from_path  # lazy import — optional dep
+        from pdf2image import convert_from_path  # lazy import â€” optional dep
 
         if not os.path.exists(pdf_path):
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
