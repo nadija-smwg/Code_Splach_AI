@@ -33,9 +33,13 @@ const VIS_OPTIONS = {
 };
 
 function nodeColor(node: GraphNode): { background: string; border: string; highlight: { background: string; border: string } } {
+  if (node.status === 'conflict') return { background: '#7f1d1d', border: '#f87171', highlight: { background: '#991b1b', border: '#fca5a5' } };
+  if (node.status === 'warning') return { background: '#78350f', border: '#fbbf24', highlight: { background: '#92400e', border: '#fcd34d' } };
+  if (node.type === 'shipment') return { background: '#312e81', border: '#818cf8', highlight: { background: '#3730a3', border: '#a5b4fc' } };
   if (node.type === 'document') {
     return { background: '#1a2466', border: '#6366f1', highlight: { background: '#252580', border: '#818cf8' } };
   }
+  if (node.type === 'canonical_field') return { background: '#581c87', border: '#c084fc', highlight: { background: '#6b21a8', border: '#d8b4fe' } };
   return { background: '#14402e', border: '#10b981', highlight: { background: '#1a5c40', border: '#34d399' } };
 }
 
@@ -82,7 +86,7 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
             label: n.label,
             color: nodeColor(n),
             title: `Type: ${n.type}\nID: ${n.id}`,
-            shape: n.type === 'document' ? 'box' : 'ellipse',
+            shape: n.type === 'shipment' ? 'diamond' : n.type === 'document' ? 'box' : n.type === 'canonical_field' ? 'hexagon' : 'ellipse',
             font: { color: '#f1f5f9', face: 'Inter', size: 12 },
           }))
         );
@@ -93,11 +97,12 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
             from: e.from,
             to: e.to,
             label: e.label || '',
-            color: e.label === 'MUST_MATCH'
-              ? { color: '#f59e0b', highlight: '#fbbf24' }
+            color: e.label === 'ASSERTS_VALUE_FOR'
+              ? { color: '#c084fc', highlight: '#d8b4fe' }
+              : e.label === 'HAS_FIELD' ? { color: '#818cf8', highlight: '#a5b4fc' }
               : { color: '#475569', highlight: '#94a3b8' },
-            dashes: e.label === 'EXTRACTED_FROM',
-            width: e.label === 'MUST_MATCH' ? 2 : 1.5,
+            dashes: e.label === 'CONTAINS',
+            width: e.label === 'ASSERTS_VALUE_FOR' || e.label === 'HAS_FIELD' ? 2 : 1.5,
           }))
         );
 
@@ -150,9 +155,10 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
           <div className="p-3 border-b border-outline-variant/30 bg-surface-container-low/50 flex items-center justify-between text-xs">
             <span className="font-semibold text-on-surface">{nodeCount} Nodes • {edgeCount} Edges</span>
             <div className="flex items-center gap-3 text-[11px] text-on-surface-variant font-medium">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rotate-45 bg-indigo-400"></span> Shipment</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#6366f1]"></span> Document</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#10b981]"></span> Entity</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400"></span> MUST_MATCH</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-purple-400"></span> Canonical Field</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#10b981]"></span> Source Assertion</span>
             </div>
           </div>
 
@@ -215,12 +221,12 @@ export function ScreenKnowledgeGraph({ onTriggerToast }: Props) {
           <div className="border-t border-outline-variant/20 pt-3 space-y-2">
             <div className="text-[10px] uppercase text-outline font-semibold">Edge Types</div>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-amber-400"></div>
-              <span className="text-on-surface-variant">MUST_MATCH constraint</span>
+              <div className="w-8 h-0.5 bg-purple-400"></div>
+              <span className="text-on-surface-variant">Assertion contributes to canonical field</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-[#475569] border-dashed border-t"></div>
-              <span className="text-on-surface-variant">EXTRACTED_FROM link</span>
+              <span className="text-on-surface-variant">Document contains source assertion</span>
             </div>
           </div>
 

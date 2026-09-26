@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useShipment } from '../../hooks/useShipment';
-import { getDiscrepancies, resolveDiscrepancy, getExtraction } from '../../utils/api';
-import type { Discrepancy, DocumentExtraction } from '../../types';
+import { getDiscrepancies, resolveDiscrepancy, getExtraction, getKeyFields } from '../../utils/api';
+import type { Discrepancy, DocumentExtraction, FieldAssertion, ResolvedKeyField } from '../../types';
+import { KeyFieldReconciliationPanel } from '../review/KeyFieldReconciliationPanel';
 
 interface Props { onTriggerToast: (t: { title: string; message: string; type?: 'success' | 'error' | 'info' }) => void; }
 
@@ -11,10 +12,13 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
   const { shipmentId } = useShipment();
   
   const [extractions, setExtractions] = useState<DocumentExtraction[]>([]);
+  const [keyFields, setKeyFields] = useState<ResolvedKeyField[]>([]);
+  const [selectedAssertion, setSelectedAssertion] = useState<FieldAssertion | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [activeDocIndex, setActiveDocIndex] = useState(0);
   const [activeDiscrepancy, setActiveDiscrepancy] = useState<Discrepancy | null>(null);
+  const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([]);
 
   const [selectedDecision, setSelectedDecision] = useState('B');
   const [isResolved, setIsResolved] = useState(false);
@@ -29,13 +33,16 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
     
     Promise.all([
       getExtraction(shipmentId).catch(() => ({ documents: [] })),
-      getDiscrepancies(shipmentId).catch(() => ({ discrepancies: [] }))
+      getDiscrepancies(shipmentId).catch(() => ({ discrepancies: [] })),
+      getKeyFields(shipmentId).catch(() => ({ fields: [] }))
     ])
-    .then(([extData, discData]) => {
+    .then(([extData, discData, fieldData]) => {
       const docs = extData.documents || [];
       const discs = discData.discrepancies || [];
       
       setExtractions(docs);
+      setKeyFields(fieldData.fields || []);
+      setDiscrepancies(discs);
       
       if (discs.length > 0) {
         setActiveDiscrepancy(discs[0]);
@@ -91,10 +98,18 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
 
   const activeDoc = extractions[activeDocIndex];
 
-  // Helper to check if an entity is part of the active discrepancy
-  const isEntityInDiscrepancy = (val: string) => {
-    if (!activeDiscrepancy) return false;
-    return activeDiscrepancy.value_a === val || activeDiscrepancy.value_b === val;
+  const isEntityOutlier = (documentId: string, entity: { entity_type: string; value: string; page: number }) =>
+    keyFields.some(field => field.assertions.some(assertion =>
+      assertion.document_id === documentId && assertion.entity_type === entity.entity_type &&
+      assertion.raw_value === entity.value && assertion.page === entity.page && assertion.is_outlier
+    ));
+
+  const selectAssertion = (assertion: FieldAssertion) => {
+    setSelectedAssertion(assertion);
+    const documentIndex = extractions.findIndex(doc => doc.document_id === assertion.document_id);
+    if (documentIndex >= 0) setActiveDocIndex(documentIndex);
+    const relatedDiscrepancy = discrepancies.find(discrepancy => discrepancy.canonical_field_id === assertion.canonical_field_id);
+    if (relatedDiscrepancy) setActiveDiscrepancy(relatedDiscrepancy);
   };
 
   return (
@@ -145,6 +160,8 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
           )}
         </div>
       </div>
+
+      <KeyFieldReconciliationPanel fields={keyFields} onSelectAssertion={selectAssertion} />
 
       {/* Split Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -197,10 +214,13 @@ export function ScreenReviewWorkspace({ onTriggerToast }: Props) {
                 {activeDoc.entities.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {activeDoc.entities.map((entity, i) => {
-                      const hasDiscrepancy = isEntityInDiscrepancy(entity.value);
+                      const hasDiscrepancy = isEntityOutlier(activeDoc.document_id, entity);
+                      const isSelected = selectedAssertion?.document_id === activeDoc.document_id &&
+                        selectedAssertion.entity_type === entity.entity_type &&
+                        selectedAssertion.raw_value === entity.value && selectedAssertion.page === entity.page;
                       return (
                         <div key={i} className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors ${
-                          hasDiscrepancy ? 'border-error bg-error-container/10' : 'border-outline-variant/30 bg-surface-container-low'
+                          hasDiscrepancy ? 'border-error bg-error-container/10' : isSelected ? 'border-primary bg-primary-fixed/15' : 'border-outline-variant/30 bg-surface-container-low'
                         }`}>
                           <div className="flex justify-between items-start">
                             <span className="text-[10px] text-outline font-bold uppercase tracking-wider">{entity.entity_type}</span>

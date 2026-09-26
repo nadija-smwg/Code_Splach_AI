@@ -80,6 +80,45 @@ export interface Discrepancy {
   value_b: string;
   delta: string;
   xai_block: XAIBlock;
+  canonical_field_id?: string;
+}
+
+// ============================================
+// CANONICAL KEY-FIELD RECONCILIATION
+// ============================================
+export interface FieldAssertion {
+  assertion_id: string;
+  canonical_field_id: string;
+  document_id: string;
+  document_type: DocumentType;
+  document_label: string;
+  entity_type: string;
+  raw_value: string;
+  normalized_value: number | string;
+  unit: string | null;
+  page: number;
+  bbox: number[];
+  extraction_confidence: number;
+  is_consensus: boolean;
+  is_outlier: boolean;
+  variance: number | null;
+}
+
+export interface ResolvedKeyField {
+  canonical_field_id: string;
+  entity_type: string;
+  label: string;
+  status: 'match' | 'conflict' | 'warning' | 'pending';
+  consensus_value: number | string;
+  unit: string | null;
+  resolution_confidence: number;
+  assertions: FieldAssertion[];
+}
+
+export interface KeyFieldResponse {
+  shipment_id: string;
+  summary: { total_fields: number; match: number; conflict: number; warning: number; pending: number };
+  fields: ResolvedKeyField[];
 }
 
 // ============================================
@@ -88,7 +127,7 @@ export interface Discrepancy {
 export interface GraphNode {
   id: string;
   label: string;
-  type: 'document' | 'entity';
+  type: 'shipment' | 'document' | 'canonical_field' | 'source_assertion';
   color: string | { background: string; border: string };
   status?: 'conflict' | 'match' | 'warning' | 'pending';
   document_type?: string;

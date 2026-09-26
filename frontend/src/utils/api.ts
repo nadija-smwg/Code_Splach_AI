@@ -2,7 +2,7 @@
 import axios from 'axios';
 import type {
   UploadResponse, ShipmentStatus, DocumentExtraction,
-  GraphData, Discrepancy, AuditEntry,
+  GraphData, Discrepancy, AuditEntry, KeyFieldResponse,
 } from '../types';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 export const api = axios.create({
@@ -38,6 +38,10 @@ export async function getGraph(id: string): Promise<GraphData> {
 }
 export async function getDiscrepancies(id: string): Promise<{ shipment_id: string; total_discrepancies: number; discrepancies: Discrepancy[] }> {
   const { data } = await api.get(`/shipments/${id}/discrepancies`);
+  return data;
+}
+export async function getKeyFields(id: string): Promise<KeyFieldResponse> {
+  const { data } = await api.get<KeyFieldResponse>(`/shipments/${id}/key-fields`);
   return data;
 }
 export async function getAuditTrail(id: string): Promise<{ shipment_id: string; total_events: number; entries: AuditEntry[] }> {
