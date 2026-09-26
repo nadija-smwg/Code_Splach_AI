@@ -725,7 +725,7 @@ class EntityExtractor:
             page = tokens[0].page if tokens else (all_tokens[0].page if all_tokens else 1)
             result.entities.append(ExtractedEntity(
                 entity_type=entity_type,
-                value=value,            # raw, not normalised
+                value=str(value),            # raw, not normalised
                 page=page,
                 bbox=bbox,
                 extraction_confidence=round(min(conf, 0.97), 4),
@@ -752,13 +752,13 @@ class EntityExtractor:
 
                 for entity_type, value in openai_data.items():
                     # Map OpenAI value back to OCR bbox
-                    bbox, ocr_conf = _multi_token_bbox(value, all_tokens)
-                    page = self._value_page(value, all_tokens)
+                    bbox, ocr_conf = _multi_token_bbox(str(value), all_tokens)
+                    page = self._value_page(str(value), all_tokens)
                     conf = self._openai_confidence(bbox, ocr_conf)
 
                     result.entities.append(ExtractedEntity(
                         entity_type=entity_type,
-                        value=value,
+                        value=str(value),
                         page=page,
                         bbox=bbox,
                         extraction_confidence=round(conf, 4),
