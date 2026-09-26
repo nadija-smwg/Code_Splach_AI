@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { listDossiers } from '../../utils/api';
 import { useShipment } from '../../hooks/useShipment';
+import { prefersReducedMotion, isMobile } from '../../hooks/useScrollAnimations';
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface Props { onTriggerToast: (t: { title: string; message: string; type?: 'error' | 'info' | 'success' }) => void; }
 
@@ -56,64 +60,200 @@ export function ScreenOverview({ onTriggerToast }: Props) {
   const [loading, setLoading] = useState(true);
   const [channelOverrides, setChannelOverrides] = useState<Record<string, string>>({});
 
-  // Refs for GSAP targets
-  const heroRef = useRef<HTMLElement>(null);
+  const heroRef       = useRef<HTMLElement>(null);
+  const heroBgRef     = useRef<HTMLImageElement>(null);
+  const heroContentRef = useRef<HTMLDivElement>(null);
   const statusBadgeRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLDivElement>(null);
-  const buttonsRef = useRef<HTMLDivElement>(null);
-  const tableRef = useRef<HTMLElement>(null);
-  const rowsRef = useRef<HTMLTableSectionElement>(null);
+  const titleRef      = useRef<HTMLHeadingElement>(null);
+  const subtitleRef   = useRef<HTMLParagraphElement>(null);
+  const buttonsRef    = useRef<HTMLDivElement>(null);
+  // Dossier section
+  const dossierWrapRef  = useRef<HTMLDivElement>(null);
+  const tableRef        = useRef<HTMLElement>(null);
+  const tableHeadRef    = useRef<HTMLDivElement>(null);
+  const emptyStateRef   = useRef<HTMLDivElement>(null);
+  const rowsRef         = useRef<HTMLTableSectionElement>(null);
 
-  // ── Mount animation: hero entrance ───────────────────────────────────
+  // ── Mount animation: cinematic hero entrance ─────────────────────────
   useEffect(() => {
     const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      if (prefersReducedMotion) {
+        // Instantly reveal everything, no animation
+        gsap.set([heroRef.current, statusBadgeRef.current, titleRef.current,
+                  subtitleRef.current, buttonsRef.current], { opacity: 1, y: 0, scale: 1 });
+        return;
+      }
 
-      // Hero slides up and fades in
-      tl.fromTo(heroRef.current,
-        { y: 40, opacity: 0, scale: 0.98 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.8 }
+      // 1. Background image: start zoomed in, settle to natural scale
+      gsap.fromTo(heroBgRef.current,
+        { scale: 1.08 },
+        { scale: 1, duration: 2.2, ease: 'power2.out' }
       );
 
-      // Status badge bounces in
+      // 2. Whole hero section fades in
+      gsap.fromTo(heroRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.6, ease: 'power2.out' }
+      );
+
+      // 3. Staggered content entrance
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' }, delay: 0.2 });
+
       tl.fromTo(statusBadgeRef.current,
-        { y: -16, opacity: 0, scale: 0.85 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.7)' },
-        '-=0.4'
+        { y: -14, opacity: 0, scale: 0.9 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(1.4)' }
       );
 
-      // Title + description slide up
-      tl.fromTo(titleRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.55 },
-        '-=0.3'
+      tl.fromTo(titleRef.current ? Array.from(titleRef.current.children) : [],
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.65, stagger: 0.15 },
+        '-=0.2'
       );
 
-      // Buttons stagger in
-      tl.fromTo(
-        buttonsRef.current ? Array.from(buttonsRef.current.children) : [],
+      tl.fromTo(subtitleRef.current,
         { y: 16, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.45, stagger: 0.12 },
+        { y: 0, opacity: 1, duration: 0.5 },
         '-=0.25'
       );
 
-      // Pipeline section slides up
-      tl.fromTo(tableRef.current,
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: 'power2.out' },
-        '-=0.1'
+      tl.fromTo(
+        buttonsRef.current ? Array.from(buttonsRef.current.children) : [],
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.45, stagger: 0.1 },
+        '-=0.2'
       );
+
+      // 4. Hero scroll-out parallax — content scrolls up & fades; bg scrolls slower
+      ScrollTrigger.create({
+        trigger: heroRef.current,
+        start: 'top top',
+        end: 'bottom top',
+        scrub: 1,
+        onUpdate: (self) => {
+          const p = self.progress;
+          const mobile = isMobile();
+
+          // Hero text content fades and drifts up as user scrolls
+          if (heroContentRef.current) {
+            gsap.set(heroContentRef.current, {
+              y: p * (mobile ? 40 : 70),
+              opacity: 1 - p * 1.4,
+            });
+          }
+
+          // Background image parallax — moves at ~40% speed and very subtly zooms
+          if (heroBgRef.current) {
+            gsap.set(heroBgRef.current, {
+              y: p * (mobile ? 30 : 55),
+              scale: 1 + p * 0.04,
+            });
+          }
+        },
+      });
     });
     return () => ctx.revert();
   }, []);
 
-  // ── Animate table rows when dossiers load ───────────────────────────
+
+  // -- ScrollTrigger: Full dossier section coordinated reveal --
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      if (prefersReducedMotion) {
+        gsap.set([dossierWrapRef.current, tableRef.current, tableHeadRef.current, emptyStateRef.current],
+          { opacity: 1, y: 0, scale: 1 });
+        return;
+      }
+
+      // 1. Outer wrapper slides up as it enters viewport
+      gsap.fromTo(dossierWrapRef.current,
+        { opacity: 0, y: 60 },
+        {
+          opacity: 1, y: 0,
+          duration: 1.0,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: dossierWrapRef.current,
+            start: 'top 92%',
+            toggleActions: 'play none none none',
+          },
+        }
+      );
+
+      // 2. Card scales up subtly from 0.97
+      gsap.fromTo(tableRef.current,
+        { scale: 0.97, opacity: 0 },
+        {
+          scale: 1, opacity: 1,
+          duration: 0.9,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: dossierWrapRef.current,
+            start: 'top 90%',
+            toggleActions: 'play none none none',
+          },
+        }
+      );
+
+      // 3. Header bar children stagger in
+      if (tableHeadRef.current) {
+        gsap.fromTo(Array.from(tableHeadRef.current.children),
+          { opacity: 0, y: 12 },
+          {
+            opacity: 1, y: 0,
+            duration: 0.55,
+            stagger: 0.1,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: dossierWrapRef.current,
+              start: 'top 88%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
+      }
+
+      // 4. Empty state items animate in sequence
+      if (emptyStateRef.current) {
+        gsap.fromTo(Array.from(emptyStateRef.current.children),
+          { opacity: 0, y: 20 },
+          {
+            opacity: 1, y: 0,
+            duration: 0.6,
+            stagger: 0.12,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: dossierWrapRef.current,
+              start: 'top 85%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
+      }
+    });
+    return () => ctx.revert();
+  }, []);
+
+  // -- Animate table rows when dossiers load (ScrollTrigger) --
   useEffect(() => {
     if (!loading && dossiers.length > 0 && rowsRef.current) {
-      const rows = Array.from(rowsRef.current.querySelectorAll('tr'));
-      gsap.fromTo(rows,
-        { x: -24, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.45, stagger: 0.08, ease: 'power2.out', delay: 0.1 }
+      if (prefersReducedMotion) {
+        gsap.set(rowsRef.current.querySelectorAll('tr'), { opacity: 1, y: 0 });
+        return;
+      }
+      gsap.fromTo(
+        rowsRef.current.querySelectorAll('tr'),
+        { opacity: 0, y: 18 },
+        {
+          opacity: 1, y: 0,
+          duration: 0.5,
+          stagger: 0.08,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: rowsRef.current,
+            start: 'top 95%',
+            toggleActions: 'play none none none',
+          },
+        }
       );
     }
   }, [loading, dossiers]);
@@ -162,16 +302,17 @@ export function ScreenOverview({ onTriggerToast }: Props) {
     gsap.fromTo(e.currentTarget, { scale: 0.93 }, { scale: 1, duration: 0.3, ease: 'elastic.out(1, 0.4)' });
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col">
 
       {/* ── Hero Banner ───────────────────────────────────────────── */}
       <section
         ref={heroRef}
         style={{ opacity: 0 }}
-        className="relative w-full overflow-hidden shadow-2xl bg-surface-container"
+        className="relative w-full min-h-screen overflow-hidden shadow-2xl bg-surface-container"
       >
-        <div className="relative w-full min-h-[520px] md:min-h-[560px] flex flex-col justify-center">
+        <div className="relative w-full min-h-screen flex flex-col justify-center">
           <img
+            ref={heroBgRef}
             alt="ClearanceX document review workspace"
             className="absolute inset-0 w-full h-full object-cover object-center"
             src="/screen.png"
@@ -198,7 +339,7 @@ export function ScreenOverview({ onTriggerToast }: Props) {
           />
 
           {/* Content: pushed below the 80px transparent header */}
-          <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-8 pt-28 pb-10 flex flex-col gap-4">
+          <div ref={heroContentRef} className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-8 pt-28 pb-10 flex flex-col gap-4">
             {/* System Status */}
             <div
               ref={statusBadgeRef}
@@ -212,13 +353,17 @@ export function ScreenOverview({ onTriggerToast }: Props) {
               <span className="text-emerald-400 font-semibold">Document review</span>
             </div>
 
-            {/* Title */}
-            <div ref={titleRef} style={{ opacity: 0 }}>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight drop-shadow-lg">
-                Clearance<span style={{ color: '#5b8fd4' }}>X</span>{' '}
-                <span className="font-light text-white/80">Document review</span>
+            {/* Title — each child is animated independently for word-by-word reveal */}
+            <div>
+              <h1 ref={titleRef} className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight drop-shadow-lg">
+                <span style={{ display: 'inline-block', opacity: 0 }}>Clearance<span style={{ color: '#5b8fd4' }}>X</span></span>{' '}
+                <span style={{ display: 'inline-block', opacity: 0 }} className="font-light text-white/80">Document review</span>
               </h1>
-              <p className="text-white/75 text-sm md:text-base max-w-2xl mt-2 leading-relaxed">
+              <p
+                ref={subtitleRef}
+                style={{ opacity: 0 }}
+                className="text-white/75 text-sm md:text-base max-w-2xl mt-2 leading-relaxed"
+              >
                 Compare extracted CUSDEC fields across the documents in each dossier.
               </p>
             </div>
@@ -250,13 +395,14 @@ export function ScreenOverview({ onTriggerToast }: Props) {
       </section>
 
       {/* ── Active Consignment Pipeline ─ below hero, constrained ── */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-8">
+      <div ref={dossierWrapRef} className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-12 min-h-screen flex flex-col">
       <section
         ref={tableRef}
-        style={{ opacity: 0, background: `linear-gradient(145deg, ${NAVY}0A 0%, ${NAVY}05 100%)`, border: `1.5px solid ${NAVY}20` }}
-        className="rounded-2xl shadow-lg overflow-hidden"
+        style={{ background: `linear-gradient(145deg, ${NAVY}0A 0%, ${NAVY}05 100%)`, border: `1.5px solid ${NAVY}20` }}
+        className="rounded-2xl shadow-lg overflow-hidden flex-1 flex flex-col"
       >
         <div
+          ref={tableHeadRef}
           className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
           style={{ borderBottom: `1px solid ${NAVY}18` }}
         >
@@ -295,18 +441,20 @@ export function ScreenOverview({ onTriggerToast }: Props) {
 
         {/* Empty State */}
         {!loading && dossiers.length === 0 && (
-          <div className="p-10 text-center">
-            <span className="material-symbols-outlined text-[44px] text-outline">inbox</span>
-            <p className="text-sm font-semibold text-on-surface mt-3">No dossiers yet</p>
-            <p className="text-xs text-on-surface-variant mt-1 max-w-md mx-auto">
-              Add documents to compare the CUSDEC fields they contain.
-            </p>
-            <button onClick={() => navigate('/dossiers')}
-              style={{ backgroundColor: NAVY }}
-              className="mt-4 inline-flex items-center gap-2 text-white px-5 py-2.5 rounded-lg text-xs font-semibold shadow-sm hover:opacity-90 transition-all">
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              <span>Add a dossier</span>
-            </button>
+          <div className="p-10 text-center flex-1 flex flex-col items-center justify-center min-h-[400px]">
+            <div ref={emptyStateRef}>
+              <span className="material-symbols-outlined text-[44px] text-outline">inbox</span>
+              <p className="text-sm font-semibold text-on-surface mt-3">No dossiers yet</p>
+              <p className="text-xs text-on-surface-variant mt-1 max-w-md mx-auto">
+                Add documents to compare the CUSDEC fields they contain.
+              </p>
+              <button onClick={() => navigate('/dossiers')}
+                style={{ backgroundColor: NAVY }}
+                className="mt-4 inline-flex items-center gap-2 text-white px-5 py-2.5 rounded-lg text-xs font-semibold shadow-sm hover:opacity-90 transition-all">
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>Add a dossier</span>
+              </button>
+            </div>
           </div>
         )}
 
