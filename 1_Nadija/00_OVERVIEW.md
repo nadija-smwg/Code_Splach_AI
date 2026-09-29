@@ -29,6 +29,7 @@ You own the **AI brain** of ClearanceX. Your pipeline takes raw PDF files and pr
 | ~~12~~| ~~OpenAI Migration + UI API Failure Warnings~~ - ✅ **DONE** Migrated the AI pipeline from Gemini to OpenAI, removing retry loops, fixing PaddleOCR zlib issues, resolving Pydantic tuple extraction errors, and implementing UI warnings for fallback API failures. | ~~MUST~~ | ~~3-4 hours~~ |
 | ~~13~~| ~~Party-Role-Aware Consignee Extraction~~ — ✅ **DONE** Consignee values now require explicit source-label evidence. Carriers, freight forwarders, banks, beneficiaries, shippers, and notify parties are retained under their own roles and excluded from CUSDEC consignee resolution; stored dossiers are rechecked against saved OCR role evidence. | ~~MUST~~ | ~~2–3 hours~~ |
 | ~~11~~| ~~Integration Testing + Demo Prep~~ — ✅ **DONE** Syntheic document tests, master schema contract validation, edge case resilience tests, normalizer fallback cache script (`clear_demo_cache.py`), pipeline verifier script (`verify_ai_pipeline.py`), and deterministic demo fallback cache (`demo_cache.json`) are generated and fully verified. | ~~MUST~~ | ~~2–3 hours~~ |
+| ~~34~~ | ~~Shared Finalist Presentation and Viva Preparation Pack~~ — ✅ **DONE** Team preparation artifacts: 10-minute English deck, timed script, project limitations review, 62 viva Q&A, and demo checklist in `Presentation_&_Viva/`. Prepared with assistant support; individual speaking roles and rehearsal remain to be confirmed. | ~~MUST~~ | ~~Preparation pack~~ |
 
 **Total estimated: ~20–28 hours across 3–4 days**
 
