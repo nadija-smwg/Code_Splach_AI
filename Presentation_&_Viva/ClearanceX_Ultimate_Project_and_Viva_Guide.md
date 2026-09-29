@@ -194,7 +194,7 @@ Important remaining gaps include per-item HS code and weight allocation, line-to
 | “We will measure review time and false negatives in a pilot.” | “90% faster,” “99% accurate,” “under $0.05,” without a reproducible benchmark. |
 | “We focus on a specific reviewer workflow.” | “There is no competitor or existing tool.” |
 
-The signatures in the classifier cover six named document categories: commercial invoice, packing list, AWB, B/L, freight invoice, and delivery order. Presence of a signature is not proof of equal end-to-end accuracy for every category. Lead the demonstration with the primary invoice/packing/transport workflow.
+The signatures in the classifier cover seven named document categories: commercial invoice, packing list, AWB, B/L, freight invoice, delivery order, and letter of credit. Presence of a signature is not proof of equal end-to-end accuracy for every category. Lead the demonstration with the primary invoice/packing/transport workflow.
 
 ## 7. Loopholes and limitations, ranked for action
 
@@ -209,6 +209,7 @@ These are defensive review findings on this repository. “Observed” means the
 | P1 before claims of successful processing | `AIPipeline` returns `errors[]`, but `DossierManager` marks returned results done unless an exception escapes. | An empty/error result can look completed. | Define success, partial, and failed result contracts; persist warnings/errors; test transitions. |
 | P1 demo preparation | Docker daemon unavailable during review. Backend environment lacks `openai`; pytest hits an unrelated local `py.py`. | Clean end-to-end execution was not verified. | Start Docker and rebuild; verify a fresh dossier and record the run. |
 | P1 confidence | Expected scoring inputs are absent from the entity dict, then defaults overwrite confidence. `pipeline.py`, `confidence.py`. | Scores can look informative while being nearly uniform. | Carry measured inputs, separate uncertainty types, calibrate with labeled cases. |
+| P1 UI truthfulness | Review UI falls back to 99.0% when active discrepancy confidence is absent/zero; data-fetch failures become empty arrays. `ScreenReviewWorkspace.tsx`. | An unavailable result can look reassuring instead of uncertain. | Show unknown/error states explicitly and remove invented default confidence. |
 | P1 audit | In-memory registry and 16-hex-character hash over only timestamp/module/action/outcome. `audit_trail.py`. | No durable hash chain, no protection of reasoning/details, no authenticated actor. | Persist append-only events, full payload hash, chaining/signing and verification policy. |
 | P1 audit honesty | Discrepancy and audit routes call `build_demo_trail` for shipments without a trail. | Synthetic events and hardcoded weight values can appear for real dossiers. | Limit fixture trails to explicit demo IDs; record actual events only. |
 | P1 export correctness | Shipment-level HS code, package count, and weight repeat on each XML item. `cusdec_xml.py`. | Multiple goods items may carry inappropriate classification or double-counted totals. | Resolve per-item identity, classification, and allocations; reconcile totals. |
@@ -225,6 +226,7 @@ These are defensive review findings on this repository. “Observed” means the
 | P2 test disagreement | One selected party-role test expects unknown for an AIR-named company, but current heuristic returns carrier. | Test and intended behavior diverge; heuristics may overgeneralize. | Agree on intended policy; update the correct implementation/test and add real-layout cases. |
 | P2 governance | No validated accuracy/cost dataset or business pilot results found in reviewed materials. | Outcomes and economics cannot yet be quantified credibly. | Run the evaluation plan below and report sample size and limitations. |
 | P2 UI claims | Tariff entries and batch rows are hardcoded; some auth/PKI copy implies real integrations. | Judges may challenge an impressive screen that has no integration behind it. | Label demonstrations, remove unsupported claims, prioritize core workflow in the pitch. |
+| P2 evidence UI | Current Review Workspace renders extracted field cards and page labels, not an embedded original-PDF viewer with bbox overlays. | Stored geometry is not the same as demonstrated visual localization. | Open the original test PDF separately for the demo; implement and verify the PDF overlay before claiming it. |
 | P2 stale documentation | README, old plans, and active code disagree on roles, XAI layer count, rules, and provider. | Team answers can contradict each other. | Align public documentation and ownership before the final. |
 
 **If time is short:** first make the demo repeatable and the claims accurate. Then address processing status, confidence inputs, and synthetic audit leakage. Before any use with real customer data, fix access controls and upload protection. Do not hide known issues by editing confidence labels or selecting only easy cases.
@@ -235,6 +237,7 @@ These are defensive review findings on this repository. “Observed” means the
 - Shipping dossiers may include master/house AWBs, multiple currencies, split consignments, and several HS codes. Shipment-level grouping alone cannot model all of these safely.
 - Bbox mapping can match repeated values to the wrong location. Missing geometry must remain visibly uncertain.
 - The pipeline deduplicates equal values by type/value, potentially losing repeated locations within a document.
+- Successful pipeline returns omit the accumulated `warnings` list even though the extractor collects it and the frontend has a warnings panel. Preserve warnings in the shared response contract.
 - A document can contain malicious instructions aimed at a model. Treat document text as data, restrict outputs to a schema, validate results, and never give extraction models operational authority.
 - Model/API errors, database failures, and normalization errors must stay visible to the reviewer. Empty output must not mean “clean.”
 
