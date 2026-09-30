@@ -1,0 +1,299 @@
+{
+  "synthetic": true,
+  "shipment_reference": "CX-2026-0930",
+  "note": "Ground truth, not OCR results. No accuracy is assumed.",
+  "documents": [
+    {
+      "file": "commercial_invoice.pdf",
+      "document_type": "commercial_invoice",
+      "pages": 1,
+      "expected_fields": {
+        "INVOICE_NUMBER": {
+          "label": "Invoice Number",
+          "value": "INV-2026-0930"
+        },
+        "INVOICE_DATE": {
+          "label": "Invoice Date",
+          "value": "30 September 2026"
+        },
+        "SHIPPER_NAME": {
+          "label": "Shipper",
+          "value": "Meridian Textiles Ltd"
+        },
+        "CONSIGNEE_NAME": {
+          "label": "Consignee",
+          "value": "Lanka Apparel Ltd"
+        },
+        "CONSIGNEE_ADDRESS": {
+          "label": "Consignee Address",
+          "value": "18 Lake Road, Colombo, Sri Lanka"
+        },
+        "COUNTRY_OF_ORIGIN": {
+          "label": "Country of Origin",
+          "value": "India"
+        },
+        "INCOTERM": {
+          "label": "Incoterm",
+          "value": "CIF Colombo"
+        },
+        "PAYMENT_TERMS": {
+          "label": "Payment Terms",
+          "value": "30 Days from Invoice Date"
+        },
+        "CURRENCY_CODE": {
+          "label": "Currency",
+          "value": "USD"
+        },
+        "PORT_OF_LOADING": {
+          "label": "Port of Loading",
+          "value": "Chennai"
+        },
+        "PORT_OF_DISCHARGE": {
+          "label": "Port of Discharge",
+          "value": "Colombo"
+        },
+        "VESSEL_NAME": {
+          "label": "Vessel Name",
+          "value": "MV MERIDIAN"
+        },
+        "HS_CODE": {
+          "label": "HS Code",
+          "value": "520812"
+        },
+        "GROSS_WEIGHT": {
+          "label": "Gross Weight",
+          "value": "480.00 KG"
+        },
+        "NET_WEIGHT": {
+          "label": "Net Weight",
+          "value": "440.00 KG"
+        },
+        "PACKAGE_COUNT": {
+          "label": "Package Count",
+          "value": "20 Cartons"
+        },
+        "FREIGHT_AMOUNT": {
+          "label": "Freight Amount",
+          "value": "USD 400.00"
+        },
+        "INSURANCE_AMOUNT": {
+          "label": "Insurance Amount",
+          "value": "USD 100.00"
+        },
+        "TOTAL_AMOUNT": {
+          "label": "Total Amount",
+          "value": "USD 10000.00"
+        }
+      },
+      "expected_lines": [
+        "CLEARANCEX SAMPLE DOCUMENT",
+        "COMMERCIAL INVOICE",
+        "Synthetic test data - not valid for commercial use",
+        "Invoice Number: INV-2026-0930",
+        "Invoice Date: 30 September 2026",
+        "Shipper: Meridian Textiles Ltd",
+        "Consignee: Lanka Apparel Ltd",
+        "Consignee Address: 18 Lake Road, Colombo, Sri Lanka",
+        "Country of Origin: India",
+        "Incoterm: CIF Colombo",
+        "Payment Terms: 30 Days from Invoice Date",
+        "Currency: USD",
+        "Port of Loading: Chennai",
+        "Port of Discharge: Colombo",
+        "Vessel Name: MV MERIDIAN",
+        "HS Code: 520812",
+        "Gross Weight: 480.00 KG",
+        "Net Weight: 440.00 KG",
+        "Package Count: 20 Cartons",
+        "DESCRIPTION OF GOODS",
+        "Description Qty (M) Unit Price Amount (USD)",
+        "Cotton Fabric A 1200 4.75 5700.00",
+        "Cotton Fabric B 800 4.75 3800.00",
+        "Goods Subtotal: USD 9500.00",
+        "Freight Amount: USD 400.00",
+        "Insurance Amount: USD 100.00",
+        "Total Amount: USD 10000.00",
+        "Fictional OCR sample | Page 1 of 1"
+      ]
+    },
+    {
+      "file": "packing_list.pdf",
+      "document_type": "packing_list",
+      "pages": 1,
+      "expected_fields": {
+        "SHIPPER_NAME": {
+          "label": "Shipper",
+          "value": "Meridian Textiles Ltd"
+        },
+        "CONSIGNEE_NAME": {
+          "label": "Consignee",
+          "value": "Lanka Apparel Ltd"
+        },
+        "GROSS_WEIGHT": {
+          "label": "Gross Weight",
+          "value": "480.00 KG"
+        },
+        "NET_WEIGHT": {
+          "label": "Net Weight",
+          "value": "440.00 KG"
+        },
+        "TARE_WEIGHT": {
+          "label": "Tare Weight",
+          "value": "40.00 KG"
+        },
+        "PACKAGE_COUNT": {
+          "label": "Package Count",
+          "value": "20 Cartons"
+        },
+        "VOLUME": {
+          "label": "Volume",
+          "value": "2.400 CBM"
+        },
+        "SHIPPING_MARKS": {
+          "label": "Shipping Marks",
+          "value": "CX-LKA-2026"
+        }
+      },
+      "expected_lines": [
+        "CLEARANCEX SAMPLE DOCUMENT",
+        "PACKING LIST",
+        "Synthetic test data - not valid for commercial use",
+        "Packing Reference: PL-2026-0930",
+        "Shipment Reference: CX-2026-0930",
+        "Shipper: Meridian Textiles Ltd",
+        "Consignee: Lanka Apparel Ltd",
+        "Gross Weight: 480.00 KG",
+        "Net Weight: 440.00 KG",
+        "Tare Weight: 40.00 KG",
+        "Package Count: 20 Cartons",
+        "Volume: 2.400 CBM",
+        "Shipping Marks: CX-LKA-2026",
+        "Dimensions per Carton: 60 x 50 x 40 CM",
+        "CARTON CONTENTS",
+        "Goods Cartons Gross KG Net KG CBM",
+        "Cotton Fabric A 12 288.00 264.00 1.440",
+        "Cotton Fabric B 8 192.00 176.00 0.960",
+        "TOTAL 20 480.00 440.00 2.400",
+        "Packing: sealed export cartons",
+        "Fictional OCR sample | Page 1 of 1"
+      ]
+    },
+    {
+      "file": "bill_of_lading.pdf",
+      "document_type": "bl",
+      "pages": 1,
+      "expected_fields": {
+        "BL_NUMBER": {
+          "label": "B/L Number",
+          "value": "BL-2026-0930"
+        },
+        "SHIPPER_NAME": {
+          "label": "Shipper",
+          "value": "Meridian Textiles Ltd"
+        },
+        "CONSIGNEE_NAME": {
+          "label": "Consignee",
+          "value": "Lanka Apparel Ltd"
+        },
+        "VESSEL_NAME": {
+          "label": "Vessel Name",
+          "value": "MV MERIDIAN"
+        },
+        "PORT_OF_LOADING": {
+          "label": "Port of Loading",
+          "value": "Chennai"
+        },
+        "PORT_OF_DISCHARGE": {
+          "label": "Port of Discharge",
+          "value": "Colombo"
+        },
+        "CONTAINER_NUMBER": {
+          "label": "Container Number",
+          "value": "MSCU1234566"
+        },
+        "GROSS_WEIGHT": {
+          "label": "Gross Weight",
+          "value": "480.00 KG"
+        },
+        "PACKAGE_COUNT": {
+          "label": "Package Count",
+          "value": "20 Cartons"
+        }
+      },
+      "expected_lines": [
+        "CLEARANCEX SAMPLE DOCUMENT",
+        "BILL OF LADING",
+        "Synthetic test data - not valid for commercial use",
+        "B/L Number: BL-2026-0930",
+        "Shipment Reference: CX-2026-0930",
+        "Issue Date: 30 September 2026",
+        "Shipper: Meridian Textiles Ltd",
+        "Consignee: Lanka Apparel Ltd",
+        "Notify Party: Lanka Apparel Ltd",
+        "Vessel Name: MV MERIDIAN",
+        "Voyage Number: 0930E",
+        "Port of Loading: Chennai",
+        "Port of Discharge: Colombo",
+        "Container Number: MSCU1234566",
+        "Seal No: SEAL260930",
+        "Gross Weight: 480.00 KG",
+        "Package Count: 20 Cartons",
+        "CARGO DETAILS",
+        "Goods: Cotton Fabric A and Cotton Fabric B",
+        "Shipping Marks: CX-LKA-2026",
+        "Freight Terms: Freight Prepaid",
+        "Fictional OCR sample | Page 1 of 1"
+      ]
+    },
+    {
+      "file": "delivery_order.pdf",
+      "document_type": "delivery_order",
+      "pages": 1,
+      "expected_fields": {
+        "DO_NUMBER": {
+          "label": "DO Number",
+          "value": "DO-2026-0930"
+        },
+        "CONSIGNEE_NAME": {
+          "label": "Consignee",
+          "value": "Lanka Apparel Ltd"
+        },
+        "CONTAINER_NUMBER": {
+          "label": "Container Number",
+          "value": "MSCU1234566"
+        },
+        "PORT_OF_DISCHARGE": {
+          "label": "Port of Discharge",
+          "value": "Colombo"
+        },
+        "GROSS_WEIGHT": {
+          "label": "Gross Weight",
+          "value": "480.00 KG"
+        },
+        "PACKAGE_COUNT": {
+          "label": "Package Count",
+          "value": "20 Cartons"
+        }
+      },
+      "expected_lines": [
+        "CLEARANCEX SAMPLE DOCUMENT",
+        "DELIVERY ORDER",
+        "Synthetic test data - not valid for commercial use",
+        "DO Number: DO-2026-0930",
+        "Shipment Reference: CX-2026-0930",
+        "Consignee: Lanka Apparel Ltd",
+        "Container Number: MSCU1234566",
+        "Port of Discharge: Colombo",
+        "Gross Weight: 480.00 KG",
+        "Package Count: 20 Cartons",
+        "Release Date: 05 October 2026",
+        "Cargo Release: Authorized for named consignee",
+        "Collect Cargo: Colombo cargo terminal",
+        "RELEASE INSTRUCTIONS",
+        "Deliver the listed goods to Lanka Apparel Ltd.",
+        "Goods: Cotton Fabric A and Cotton Fabric B",
+        "Fictional OCR sample | Page 1 of 1"
+      ]
+    }
+  ]
+}
