@@ -1,0 +1,1389 @@
+{
+  "paddleocr_version": "3.7.0",
+  "paddlepaddle_version": "3.3.1",
+  "raster_dpi": 200,
+  "engine": "real PaddleOCR CPU; no mocks or API extraction",
+  "metric_note": "CER ignores case/whitespace/punctuation, includes reading order. Field recovery checks the labelled value in OCR text; it is not end-to-end entity extraction accuracy.",
+  "documents": [
+    {
+      "file": "commercial_invoice.pdf",
+      "token_count": 37,
+      "mean_ocr_confidence": 0.9991438066637194,
+      "normalized_character_error_rate": 0.0,
+      "normalized_character_edits": 0,
+      "expected_character_count": 649,
+      "labelled_fields_recovered": 19,
+      "expected_field_count": 19,
+      "fields": {
+        "INVOICE_NUMBER": {
+          "expected": "INV-2026-0930",
+          "label_and_value_recovered": true
+        },
+        "INVOICE_DATE": {
+          "expected": "30 September 2026",
+          "label_and_value_recovered": true
+        },
+        "SHIPPER_NAME": {
+          "expected": "Meridian Textiles Ltd",
+          "label_and_value_recovered": true
+        },
+        "CONSIGNEE_NAME": {
+          "expected": "Lanka Apparel Ltd",
+          "label_and_value_recovered": true
+        },
+        "CONSIGNEE_ADDRESS": {
+          "expected": "18 Lake Road, Colombo, Sri Lanka",
+          "label_and_value_recovered": true
+        },
+        "COUNTRY_OF_ORIGIN": {
+          "expected": "India",
+          "label_and_value_recovered": true
+        },
+        "INCOTERM": {
+          "expected": "CIF Colombo",
+          "label_and_value_recovered": true
+        },
+        "PAYMENT_TERMS": {
+          "expected": "30 Days from Invoice Date",
+          "label_and_value_recovered": true
+        },
+        "CURRENCY_CODE": {
+          "expected": "USD",
+          "label_and_value_recovered": true
+        },
+        "PORT_OF_LOADING": {
+          "expected": "Chennai",
+          "label_and_value_recovered": true
+        },
+        "PORT_OF_DISCHARGE": {
+          "expected": "Colombo",
+          "label_and_value_recovered": true
+        },
+        "VESSEL_NAME": {
+          "expected": "MV MERIDIAN",
+          "label_and_value_recovered": true
+        },
+        "HS_CODE": {
+          "expected": "520812",
+          "label_and_value_recovered": true
+        },
+        "GROSS_WEIGHT": {
+          "expected": "480.00 KG",
+          "label_and_value_recovered": true
+        },
+        "NET_WEIGHT": {
+          "expected": "440.00 KG",
+          "label_and_value_recovered": true
+        },
+        "PACKAGE_COUNT": {
+          "expected": "20 Cartons",
+          "label_and_value_recovered": true
+        },
+        "FREIGHT_AMOUNT": {
+          "expected": "USD 400.00",
+          "label_and_value_recovered": true
+        },
+        "INSURANCE_AMOUNT": {
+          "expected": "USD 100.00",
+          "label_and_value_recovered": true
+        },
+        "TOTAL_AMOUNT": {
+          "expected": "USD 10000.00",
+          "label_and_value_recovered": true
+        }
+      },
+      "keyword_document_type": "commercial_invoice",
+      "keyword_classification_confidence": 0.4912,
+      "expected_document_type": "commercial_invoice",
+      "elapsed_seconds": 57.79,
+      "recognized_text": "CLEARANCEX SAMPLE DOCUMENT\nCOMMERCIAL INVOICE\nSynthetic test data - not valid for commercial use\nInvoice Number: INV-2026-0930\nInvoice Date: 30 September 2026\nShipper: Meridian Textiles Ltd\nConsignee: Lanka Apparel Ltd\nConsignee Address: 18 Lake Road, Colombo, Sri Lanka\nCountry of Origin: India\nIncoterm: CIF Colombo\nPayment Terms: 30 Days from Invoice Date\nCurrency: USD\nPort of Loading: Chennai\nPort of Discharge: Colombo\nVessel Name: MV MERIDIAN\nHS Code: 520812\nGross Weight: 480.00 KG\nNet Weight: 440.00 KG\nPackage Count: 20 Cartons\nDESCRIPTION OF GOODS\nDescription Qty (M) Unit Price Amount (USD)\nCotton Fabric A 1200 4.75 5700.00\nCotton Fabric B 800 4.75 3800.00\nGoods Subtotal: USD 9500.00\nFreight Amount: USD 400.00\nInsurance Amount: USD 100.00\nTotal Amount: USD 10000.00\nFictional OCR sample | Page 1 of 1",
+      "tokens": [
+        {
+          "text": "CLEARANCEX SAMPLE DOCUMENT",
+          "confidence": 0.9995105266571045,
+          "bbox": [
+            110.0,
+            81.0,
+            692.0,
+            111.0
+          ]
+        },
+        {
+          "text": "COMMERCIAL INVOICE",
+          "confidence": 0.99912428855896,
+          "bbox": [
+            110.0,
+            140.0,
+            769.0,
+            191.0
+          ]
+        },
+        {
+          "text": "Synthetic test data - not valid for commercial use",
+          "confidence": 0.9997265338897705,
+          "bbox": [
+            107.0,
+            245.0,
+            771.0,
+            281.0
+          ]
+        },
+        {
+          "text": "Invoice Number: INV-2026-0930",
+          "confidence": 0.9997711777687073,
+          "bbox": [
+            108.0,
+            320.0,
+            609.0,
+            355.0
+          ]
+        },
+        {
+          "text": "Invoice Date: 30 September 2026",
+          "confidence": 0.9999149441719055,
+          "bbox": [
+            108.0,
+            381.0,
+            628.0,
+            416.0
+          ]
+        },
+        {
+          "text": "Shipper: Meridian Textiles Ltd",
+          "confidence": 0.9999884963035583,
+          "bbox": [
+            109.0,
+            439.0,
+            573.0,
+            476.0
+          ]
+        },
+        {
+          "text": "Consignee: Lanka Apparel Ltd",
+          "confidence": 0.9994505643844604,
+          "bbox": [
+            109.0,
+            497.0,
+            580.0,
+            534.0
+          ]
+        },
+        {
+          "text": "Consignee Address: 18 Lake Road, Colombo, Sri Lanka",
+          "confidence": 0.9993757605552673,
+          "bbox": [
+            109.0,
+            556.0,
+            975.0,
+            593.0
+          ]
+        },
+        {
+          "text": "Country of Origin: India",
+          "confidence": 0.9999725222587585,
+          "bbox": [
+            109.0,
+            614.0,
+            469.0,
+            651.0
+          ]
+        },
+        {
+          "text": "Incoterm: CIF Colombo",
+          "confidence": 0.9998089075088501,
+          "bbox": [
+            108.0,
+            672.0,
+            471.0,
+            706.0
+          ]
+        },
+        {
+          "text": "Payment Terms: 30 Days from Invoice Date",
+          "confidence": 0.9994020462036133,
+          "bbox": [
+            108.0,
+            731.0,
+            786.0,
+            768.0
+          ]
+        },
+        {
+          "text": "Currency: USD",
+          "confidence": 0.9993210434913635,
+          "bbox": [
+            109.0,
+            788.0,
+            345.0,
+            826.0
+          ]
+        },
+        {
+          "text": "Port of Loading: Chennai",
+          "confidence": 0.9999840259552002,
+          "bbox": [
+            107.0,
+            846.0,
+            497.0,
+            883.0
+          ]
+        },
+        {
+          "text": "Port of Discharge: Colombo",
+          "confidence": 0.9999829530715942,
+          "bbox": [
+            106.0,
+            904.0,
+            539.0,
+            943.0
+          ]
+        },
+        {
+          "text": "Vessel Name: MV MERIDIAN",
+          "confidence": 0.9996477961540222,
+          "bbox": [
+            109.0,
+            965.0,
+            568.0,
+            996.0
+          ]
+        },
+        {
+          "text": "HS Code: 520812",
+          "confidence": 0.9993266463279724,
+          "bbox": [
+            108.0,
+            1021.0,
+            389.0,
+            1055.0
+          ]
+        },
+        {
+          "text": "Gross Weight: 480.00 KG",
+          "confidence": 0.9998412728309631,
+          "bbox": [
+            109.0,
+            1080.0,
+            507.0,
+            1117.0
+          ]
+        },
+        {
+          "text": "Net Weight: 440.00 KG",
+          "confidence": 0.9999375343322754,
+          "bbox": [
+            107.0,
+            1136.0,
+            468.0,
+            1176.0
+          ]
+        },
+        {
+          "text": "Package Count: 20 Cartons",
+          "confidence": 0.9999346733093262,
+          "bbox": [
+            107.0,
+            1197.0,
+            539.0,
+            1234.0
+          ]
+        },
+        {
+          "text": "DESCRIPTION OF GOODS",
+          "confidence": 0.999788761138916,
+          "bbox": [
+            110.0,
+            1278.0,
+            561.0,
+            1309.0
+          ]
+        },
+        {
+          "text": "Description",
+          "confidence": 0.9999971389770508,
+          "bbox": [
+            118.0,
+            1344.0,
+            307.0,
+            1382.0
+          ]
+        },
+        {
+          "text": "Qty (M)",
+          "confidence": 0.997833251953125,
+          "bbox": [
+            687.0,
+            1339.0,
+            809.0,
+            1386.0
+          ]
+        },
+        {
+          "text": "Unit Price",
+          "confidence": 0.9999793171882629,
+          "bbox": [
+            910.0,
+            1345.0,
+            1072.0,
+            1379.0
+          ]
+        },
+        {
+          "text": "Amount (USD)",
+          "confidence": 0.9999839663505554,
+          "bbox": [
+            1203.0,
+            1344.0,
+            1434.0,
+            1382.0
+          ]
+        },
+        {
+          "text": "Cotton Fabric A",
+          "confidence": 0.9999340176582336,
+          "bbox": [
+            119.0,
+            1429.0,
+            356.0,
+            1463.0
+          ]
+        },
+        {
+          "text": "1200",
+          "confidence": 0.9999980330467224,
+          "bbox": [
+            689.0,
+            1427.0,
+            769.0,
+            1464.0
+          ]
+        },
+        {
+          "text": "4.75",
+          "confidence": 0.9999984502792358,
+          "bbox": [
+            909.0,
+            1427.0,
+            982.0,
+            1464.0
+          ]
+        },
+        {
+          "text": "5700.00",
+          "confidence": 0.9999975562095642,
+          "bbox": [
+            1203.0,
+            1427.0,
+            1328.0,
+            1463.0
+          ]
+        },
+        {
+          "text": "Cotton Fabric B",
+          "confidence": 0.9999740719795227,
+          "bbox": [
+            121.0,
+            1513.0,
+            354.0,
+            1544.0
+          ]
+        },
+        {
+          "text": "800",
+          "confidence": 0.9999973177909851,
+          "bbox": [
+            686.0,
+            1509.0,
+            751.0,
+            1547.0
+          ]
+        },
+        {
+          "text": "4.75",
+          "confidence": 0.999996542930603,
+          "bbox": [
+            908.0,
+            1510.0,
+            982.0,
+            1547.0
+          ]
+        },
+        {
+          "text": "3800.00",
+          "confidence": 0.9999970197677612,
+          "bbox": [
+            1203.0,
+            1510.0,
+            1328.0,
+            1546.0
+          ]
+        },
+        {
+          "text": "Goods Subtotal: USD 9500.00",
+          "confidence": 0.999945342540741,
+          "bbox": [
+            110.0,
+            1593.0,
+            579.0,
+            1627.0
+          ]
+        },
+        {
+          "text": "Freight Amount: USD 400.00",
+          "confidence": 0.9841918349266052,
+          "bbox": [
+            108.0,
+            1651.0,
+            558.0,
+            1689.0
+          ]
+        },
+        {
+          "text": "Insurance Amount: USD 100.00",
+          "confidence": 0.9961485862731934,
+          "bbox": [
+            109.0,
+            1712.0,
+            600.0,
+            1743.0
+          ]
+        },
+        {
+          "text": "Total Amount: USD 10000.00",
+          "confidence": 0.9996656179428101,
+          "bbox": [
+            108.0,
+            1769.0,
+            565.0,
+            1803.0
+          ]
+        },
+        {
+          "text": "Fictional OCR sample | Page 1 of 1",
+          "confidence": 0.9968723058700562,
+          "bbox": [
+            108.0,
+            2207.0,
+            587.0,
+            2238.0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "packing_list.pdf",
+      "token_count": 37,
+      "mean_ocr_confidence": 0.9984433151580192,
+      "normalized_character_error_rate": 0.0,
+      "normalized_character_edits": 0,
+      "expected_character_count": 485,
+      "labelled_fields_recovered": 8,
+      "expected_field_count": 8,
+      "fields": {
+        "SHIPPER_NAME": {
+          "expected": "Meridian Textiles Ltd",
+          "label_and_value_recovered": true
+        },
+        "CONSIGNEE_NAME": {
+          "expected": "Lanka Apparel Ltd",
+          "label_and_value_recovered": true
+        },
+        "GROSS_WEIGHT": {
+          "expected": "480.00 KG",
+          "label_and_value_recovered": true
+        },
+        "NET_WEIGHT": {
+          "expected": "440.00 KG",
+          "label_and_value_recovered": true
+        },
+        "TARE_WEIGHT": {
+          "expected": "40.00 KG",
+          "label_and_value_recovered": true
+        },
+        "PACKAGE_COUNT": {
+          "expected": "20 Cartons",
+          "label_and_value_recovered": true
+        },
+        "VOLUME": {
+          "expected": "2.400 CBM",
+          "label_and_value_recovered": true
+        },
+        "SHIPPING_MARKS": {
+          "expected": "CX-LKA-2026",
+          "label_and_value_recovered": true
+        }
+      },
+      "keyword_document_type": "packing_list",
+      "keyword_classification_confidence": 0.875,
+      "expected_document_type": "packing_list",
+      "elapsed_seconds": 58.13,
+      "recognized_text": "CLEARANCEX SAMPLE DOCUMENT\nPACKING LIST\nSynthetic test data - not valid for commercial use\nPacking Reference: PL-2026-0930\nShipment Reference: CX-2026-0930\nShipper: Meridian Textiles Ltd\nConsignee: Lanka Apparel Ltd\nGross Weight: 480.00 KG\nNet Weight: 440.00 KG\nTare Weight: 40.00 KG\nPackage Count: 20 Cartons\nVolume: 2.400 CBM\nShipping Marks: CX-LKA-2026\nDimensions per Carton: 60 x 50 x 40 CM\nCARTON CONTENTS\nGoods Cartons Gross KG Net KG CBM\nCotton Fabric A 12 288.00 264.00 1.440\nCotton Fabric B 8 192.00 176.00 0.960\nTOTAL 20 480.00 440.00 2.400\nPacking: sealed export cartons\nFictional OCR sample | Page 1 of 1",
+      "tokens": [
+        {
+          "text": "CLEARANCEX SAMPLE DOCUMENT",
+          "confidence": 0.9999011754989624,
+          "bbox": [
+            110.0,
+            82.0,
+            693.0,
+            112.0
+          ]
+        },
+        {
+          "text": "PACKING LIST",
+          "confidence": 0.9999130368232727,
+          "bbox": [
+            108.0,
+            138.0,
+            526.0,
+            192.0
+          ]
+        },
+        {
+          "text": "Synthetic test data - not valid for commercial use",
+          "confidence": 0.9998038411140442,
+          "bbox": [
+            109.0,
+            247.0,
+            771.0,
+            281.0
+          ]
+        },
+        {
+          "text": "Packing Reference: PL-2026-0930",
+          "confidence": 0.9977028369903564,
+          "bbox": [
+            107.0,
+            319.0,
+            645.0,
+            359.0
+          ]
+        },
+        {
+          "text": "Shipment Reference: CX-2026-0930",
+          "confidence": 0.9998708963394165,
+          "bbox": [
+            107.0,
+            378.0,
+            674.0,
+            418.0
+          ]
+        },
+        {
+          "text": "Shipper: Meridian Textiles Ltd",
+          "confidence": 0.9999756217002869,
+          "bbox": [
+            108.0,
+            437.0,
+            573.0,
+            476.0
+          ]
+        },
+        {
+          "text": "Consignee: Lanka Apparel Ltd",
+          "confidence": 0.999917209148407,
+          "bbox": [
+            109.0,
+            497.0,
+            579.0,
+            534.0
+          ]
+        },
+        {
+          "text": "Gross Weight: 480.00 KG",
+          "confidence": 0.9789857268333435,
+          "bbox": [
+            109.0,
+            555.0,
+            508.0,
+            592.0
+          ]
+        },
+        {
+          "text": "Net Weight: 440.00 KG",
+          "confidence": 0.9999164342880249,
+          "bbox": [
+            107.0,
+            613.0,
+            469.0,
+            650.0
+          ]
+        },
+        {
+          "text": "Tare Weight: 40.00 KG",
+          "confidence": 0.9908355474472046,
+          "bbox": [
+            107.0,
+            670.0,
+            465.0,
+            707.0
+          ]
+        },
+        {
+          "text": "Package Count: 20 Cartons",
+          "confidence": 0.9999288320541382,
+          "bbox": [
+            108.0,
+            732.0,
+            538.0,
+            766.0
+          ]
+        },
+        {
+          "text": "Volume: 2.400 CBM",
+          "confidence": 0.9997426271438599,
+          "bbox": [
+            108.0,
+            788.0,
+            422.0,
+            822.0
+          ]
+        },
+        {
+          "text": "Shipping Marks: CX-LKA-2026",
+          "confidence": 0.9998881220817566,
+          "bbox": [
+            107.0,
+            845.0,
+            586.0,
+            884.0
+          ]
+        },
+        {
+          "text": "Dimensions per Carton: 60 x 50 x 40 CM",
+          "confidence": 0.9915959239006042,
+          "bbox": [
+            110.0,
+            906.0,
+            739.0,
+            940.0
+          ]
+        },
+        {
+          "text": "CARTON CONTENTS",
+          "confidence": 0.9999573826789856,
+          "bbox": [
+            110.0,
+            984.0,
+            474.0,
+            1018.0
+          ]
+        },
+        {
+          "text": "Goods",
+          "confidence": 0.9999958872795105,
+          "bbox": [
+            118.0,
+            1052.0,
+            230.0,
+            1088.0
+          ]
+        },
+        {
+          "text": "Cartons",
+          "confidence": 0.9999953508377075,
+          "bbox": [
+            604.0,
+            1050.0,
+            737.0,
+            1089.0
+          ]
+        },
+        {
+          "text": "Gross KG",
+          "confidence": 0.9999728202819824,
+          "bbox": [
+            814.0,
+            1052.0,
+            973.0,
+            1087.0
+          ]
+        },
+        {
+          "text": "Net KG",
+          "confidence": 0.9999556541442871,
+          "bbox": [
+            1076.0,
+            1052.0,
+            1196.0,
+            1087.0
+          ]
+        },
+        {
+          "text": "CBM",
+          "confidence": 0.9999657273292542,
+          "bbox": [
+            1339.0,
+            1050.0,
+            1422.0,
+            1087.0
+          ]
+        },
+        {
+          "text": "Cotton Fabric A",
+          "confidence": 0.987916886806488,
+          "bbox": [
+            119.0,
+            1135.0,
+            355.0,
+            1170.0
+          ]
+        },
+        {
+          "text": "12",
+          "confidence": 0.9999968409538269,
+          "bbox": [
+            604.0,
+            1133.0,
+            651.0,
+            1173.0
+          ]
+        },
+        {
+          "text": "288.00",
+          "confidence": 0.999997079372406,
+          "bbox": [
+            811.0,
+            1132.0,
+            921.0,
+            1172.0
+          ]
+        },
+        {
+          "text": "264.00",
+          "confidence": 0.9999979138374329,
+          "bbox": [
+            1075.0,
+            1133.0,
+            1186.0,
+            1173.0
+          ]
+        },
+        {
+          "text": "1.440",
+          "confidence": 0.9999977350234985,
+          "bbox": [
+            1342.0,
+            1134.0,
+            1431.0,
+            1172.0
+          ]
+        },
+        {
+          "text": "Cotton Fabric B",
+          "confidence": 0.9999702572822571,
+          "bbox": [
+            120.0,
+            1220.0,
+            353.0,
+            1251.0
+          ]
+        },
+        {
+          "text": "8",
+          "confidence": 0.9999934434890747,
+          "bbox": [
+            603.0,
+            1218.0,
+            631.0,
+            1255.0
+          ]
+        },
+        {
+          "text": "192.00",
+          "confidence": 0.9999980926513672,
+          "bbox": [
+            815.0,
+            1218.0,
+            920.0,
+            1254.0
+          ]
+        },
+        {
+          "text": "176.00",
+          "confidence": 0.9999979138374329,
+          "bbox": [
+            1078.0,
+            1218.0,
+            1185.0,
+            1254.0
+          ]
+        },
+        {
+          "text": "0.960",
+          "confidence": 0.9999988675117493,
+          "bbox": [
+            1340.0,
+            1218.0,
+            1430.0,
+            1255.0
+          ]
+        },
+        {
+          "text": "TOTAL",
+          "confidence": 0.9999922513961792,
+          "bbox": [
+            117.0,
+            1302.0,
+            232.0,
+            1338.0
+          ]
+        },
+        {
+          "text": "20",
+          "confidence": 0.9999982714653015,
+          "bbox": [
+            602.0,
+            1301.0,
+            650.0,
+            1340.0
+          ]
+        },
+        {
+          "text": "480.00",
+          "confidence": 0.9999985694885254,
+          "bbox": [
+            811.0,
+            1301.0,
+            921.0,
+            1340.0
+          ]
+        },
+        {
+          "text": "440.00",
+          "confidence": 0.9999985694885254,
+          "bbox": [
+            1076.0,
+            1302.0,
+            1185.0,
+            1338.0
+          ]
+        },
+        {
+          "text": "2.400",
+          "confidence": 0.9999987483024597,
+          "bbox": [
+            1340.0,
+            1302.0,
+            1431.0,
+            1339.0
+          ]
+        },
+        {
+          "text": "Packing: sealed export cartons",
+          "confidence": 0.9999566674232483,
+          "bbox": [
+            108.0,
+            1431.0,
+            587.0,
+            1468.0
+          ]
+        },
+        {
+          "text": "Fictional OCR sample | Page 1 of 1",
+          "confidence": 0.996773898601532,
+          "bbox": [
+            108.0,
+            2207.0,
+            587.0,
+            2238.0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "bill_of_lading.pdf",
+      "token_count": 22,
+      "mean_ocr_confidence": 0.9978440458124335,
+      "normalized_character_error_rate": 0.0,
+      "normalized_character_edits": 0,
+      "expected_character_count": 502,
+      "labelled_fields_recovered": 9,
+      "expected_field_count": 9,
+      "fields": {
+        "BL_NUMBER": {
+          "expected": "BL-2026-0930",
+          "label_and_value_recovered": true
+        },
+        "SHIPPER_NAME": {
+          "expected": "Meridian Textiles Ltd",
+          "label_and_value_recovered": true
+        },
+        "CONSIGNEE_NAME": {
+          "expected": "Lanka Apparel Ltd",
+          "label_and_value_recovered": true
+        },
+        "VESSEL_NAME": {
+          "expected": "MV MERIDIAN",
+          "label_and_value_recovered": true
+        },
+        "PORT_OF_LOADING": {
+          "expected": "Chennai",
+          "label_and_value_recovered": true
+        },
+        "PORT_OF_DISCHARGE": {
+          "expected": "Colombo",
+          "label_and_value_recovered": true
+        },
+        "CONTAINER_NUMBER": {
+          "expected": "MSCU1234566",
+          "label_and_value_recovered": true
+        },
+        "GROSS_WEIGHT": {
+          "expected": "480.00 KG",
+          "label_and_value_recovered": true
+        },
+        "PACKAGE_COUNT": {
+          "expected": "20 Cartons",
+          "label_and_value_recovered": true
+        }
+      },
+      "keyword_document_type": "bl",
+      "keyword_classification_confidence": 0.7706,
+      "expected_document_type": "bl",
+      "elapsed_seconds": 53.96,
+      "recognized_text": "CLEARANCEX SAMPLE DOCUMENT\nBILL OF LADING\nSynthetic test data - not valid for commercial use\nB/L Number: BL-2026-0930\nShipment Reference: CX-2026-0930\nIssue Date: 30 September 2026\nShipper: Meridian Textiles Ltd\nConsignee: Lanka Apparel Ltd\nNotify Party: Lanka Apparel Ltd\nVessel Name: MV MERIDIAN\nVoyage Number: 0930E\nPort of Loading: Chennai\nPort of Discharge: Colombo\nContainer Number: MSCU1234566\nSeal No: SEAL260930\nGross Weight: 480.00 KG\nPackage Count: 20 Cartons\nCARGO DETAILS\nGoods: Cotton Fabric A and Cotton Fabric B\nShipping Marks: CX-LKA-2026\nFreight Terms: Freight Prepaid\nFictional OCR sample | Page 1 of 1",
+      "tokens": [
+        {
+          "text": "CLEARANCEX SAMPLE DOCUMENT",
+          "confidence": 0.9998852014541626,
+          "bbox": [
+            110.0,
+            82.0,
+            693.0,
+            112.0
+          ]
+        },
+        {
+          "text": "BILL OF LADING",
+          "confidence": 0.9897006750106812,
+          "bbox": [
+            109.0,
+            139.0,
+            578.0,
+            192.0
+          ]
+        },
+        {
+          "text": "Synthetic test data - not valid for commercial use",
+          "confidence": 0.9966219067573547,
+          "bbox": [
+            109.0,
+            247.0,
+            770.0,
+            281.0
+          ]
+        },
+        {
+          "text": "B/L Number: BL-2026-0930",
+          "confidence": 0.9998634457588196,
+          "bbox": [
+            109.0,
+            321.0,
+            536.0,
+            355.0
+          ]
+        },
+        {
+          "text": "Shipment Reference: CX-2026-0930",
+          "confidence": 0.9998918771743774,
+          "bbox": [
+            107.0,
+            378.0,
+            673.0,
+            418.0
+          ]
+        },
+        {
+          "text": "Issue Date: 30 September 2026",
+          "confidence": 0.9982666373252869,
+          "bbox": [
+            108.0,
+            439.0,
+            602.0,
+            476.0
+          ]
+        },
+        {
+          "text": "Shipper: Meridian Textiles Ltd",
+          "confidence": 0.9906004667282104,
+          "bbox": [
+            109.0,
+            497.0,
+            572.0,
+            533.0
+          ]
+        },
+        {
+          "text": "Consignee: Lanka Apparel Ltd",
+          "confidence": 0.9999204874038696,
+          "bbox": [
+            109.0,
+            556.0,
+            579.0,
+            593.0
+          ]
+        },
+        {
+          "text": "Notify Party: Lanka Apparel Ltd",
+          "confidence": 0.9997937679290771,
+          "bbox": [
+            109.0,
+            616.0,
+            592.0,
+            650.0
+          ]
+        },
+        {
+          "text": "Vessel Name: MV MERIDIAN",
+          "confidence": 0.9944046139717102,
+          "bbox": [
+            107.0,
+            671.0,
+            569.0,
+            706.0
+          ]
+        },
+        {
+          "text": "Voyage Number: 0930E",
+          "confidence": 0.9996235966682434,
+          "bbox": [
+            107.0,
+            729.0,
+            483.0,
+            770.0
+          ]
+        },
+        {
+          "text": "Port of Loading: Chennai",
+          "confidence": 0.999913215637207,
+          "bbox": [
+            108.0,
+            790.0,
+            496.0,
+            824.0
+          ]
+        },
+        {
+          "text": "Port of Discharge: Colombo",
+          "confidence": 0.9998741149902344,
+          "bbox": [
+            108.0,
+            848.0,
+            538.0,
+            882.0
+          ]
+        },
+        {
+          "text": "Container Number: MSCU1234566",
+          "confidence": 0.9943674206733704,
+          "bbox": [
+            108.0,
+            905.0,
+            651.0,
+            940.0
+          ]
+        },
+        {
+          "text": "Seal No: SEAL260930",
+          "confidence": 0.995358407497406,
+          "bbox": [
+            109.0,
+            963.0,
+            458.0,
+            997.0
+          ]
+        },
+        {
+          "text": "Gross Weight: 480.00 KG",
+          "confidence": 0.9998102784156799,
+          "bbox": [
+            110.0,
+            1023.0,
+            506.0,
+            1057.0
+          ]
+        },
+        {
+          "text": "Package Count: 20 Cartons",
+          "confidence": 0.9999387860298157,
+          "bbox": [
+            108.0,
+            1081.0,
+            537.0,
+            1115.0
+          ]
+        },
+        {
+          "text": "CARGO DETAILS",
+          "confidence": 0.9999043345451355,
+          "bbox": [
+            109.0,
+            1158.0,
+            411.0,
+            1196.0
+          ]
+        },
+        {
+          "text": "Goods: Cotton Fabric A and Cotton Fabric B",
+          "confidence": 0.9974135160446167,
+          "bbox": [
+            110.0,
+            1229.0,
+            792.0,
+            1262.0
+          ]
+        },
+        {
+          "text": "Shipping Marks: CX-LKA-2026",
+          "confidence": 0.9998557567596436,
+          "bbox": [
+            108.0,
+            1285.0,
+            586.0,
+            1323.0
+          ]
+        },
+        {
+          "text": "Freight Terms: Freight Prepaid",
+          "confidence": 0.9999765753746033,
+          "bbox": [
+            108.0,
+            1345.0,
+            585.0,
+            1382.0
+          ]
+        },
+        {
+          "text": "Fictional OCR sample | Page 1 of 1",
+          "confidence": 0.9975839257240295,
+          "bbox": [
+            108.0,
+            2207.0,
+            587.0,
+            2238.0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "delivery_order.pdf",
+      "token_count": 17,
+      "mean_ocr_confidence": 0.9976487896021675,
+      "normalized_character_error_rate": 0.0,
+      "normalized_character_edits": 0,
+      "expected_character_count": 446,
+      "labelled_fields_recovered": 6,
+      "expected_field_count": 6,
+      "fields": {
+        "DO_NUMBER": {
+          "expected": "DO-2026-0930",
+          "label_and_value_recovered": true
+        },
+        "CONSIGNEE_NAME": {
+          "expected": "Lanka Apparel Ltd",
+          "label_and_value_recovered": true
+        },
+        "CONTAINER_NUMBER": {
+          "expected": "MSCU1234566",
+          "label_and_value_recovered": true
+        },
+        "PORT_OF_DISCHARGE": {
+          "expected": "Colombo",
+          "label_and_value_recovered": true
+        },
+        "GROSS_WEIGHT": {
+          "expected": "480.00 KG",
+          "label_and_value_recovered": true
+        },
+        "PACKAGE_COUNT": {
+          "expected": "20 Cartons",
+          "label_and_value_recovered": true
+        }
+      },
+      "keyword_document_type": "delivery_order",
+      "keyword_classification_confidence": 0.5238,
+      "expected_document_type": "delivery_order",
+      "elapsed_seconds": 58.76,
+      "recognized_text": "CLEARANCEX SAMPLE DOCUMENT\nDELIVERY ORDER\nSynthetic test data - not valid for commercial use\nDO Number: DO-2026-0930\nShipment Reference: CX-2026-0930\nConsignee: Lanka Apparel Ltd\nContainer Number: MSCU1234566\nPort of Discharge: Colombo\nGross Weight: 480.00 KG\nPackage Count: 20 Cartons\nRelease Date: 05 October 2026\nCargo Release: Authorized for named consignee\nCollect Cargo: Colombo cargo terminal\nRELEASE INSTRUCTIONS\nDeliver the listed goods to Lanka Apparel Ltd.\nGoods: Cotton Fabric A and Cotton Fabric B\nFictional OCR sample | Page 1 of 1",
+      "tokens": [
+        {
+          "text": "CLEARANCEX SAMPLE DOCUMENT",
+          "confidence": 0.9998870491981506,
+          "bbox": [
+            110.0,
+            82.0,
+            693.0,
+            112.0
+          ]
+        },
+        {
+          "text": "DELIVERY ORDER",
+          "confidence": 0.9998758435249329,
+          "bbox": [
+            108.0,
+            139.0,
+            630.0,
+            192.0
+          ]
+        },
+        {
+          "text": "Synthetic test data - not valid for commercial use",
+          "confidence": 0.996703028678894,
+          "bbox": [
+            109.0,
+            247.0,
+            770.0,
+            281.0
+          ]
+        },
+        {
+          "text": "DO Number: DO-2026-0930",
+          "confidence": 0.9999128580093384,
+          "bbox": [
+            109.0,
+            321.0,
+            546.0,
+            355.0
+          ]
+        },
+        {
+          "text": "Shipment Reference: CX-2026-0930",
+          "confidence": 0.9999008178710938,
+          "bbox": [
+            107.0,
+            378.0,
+            673.0,
+            418.0
+          ]
+        },
+        {
+          "text": "Consignee: Lanka Apparel Ltd",
+          "confidence": 0.999969482421875,
+          "bbox": [
+            108.0,
+            438.0,
+            581.0,
+            478.0
+          ]
+        },
+        {
+          "text": "Container Number: MSCU1234566",
+          "confidence": 0.9865527749061584,
+          "bbox": [
+            109.0,
+            496.0,
+            651.0,
+            531.0
+          ]
+        },
+        {
+          "text": "Port of Discharge: Colombo",
+          "confidence": 0.9999819993972778,
+          "bbox": [
+            106.0,
+            555.0,
+            540.0,
+            594.0
+          ]
+        },
+        {
+          "text": "Gross Weight: 480.00 KG",
+          "confidence": 0.9991393685340881,
+          "bbox": [
+            110.0,
+            614.0,
+            508.0,
+            651.0
+          ]
+        },
+        {
+          "text": "Package Count: 20 Cartons",
+          "confidence": 0.9984902143478394,
+          "bbox": [
+            107.0,
+            672.0,
+            540.0,
+            709.0
+          ]
+        },
+        {
+          "text": "Release Date: 05 October 2026",
+          "confidence": 0.999844491481781,
+          "bbox": [
+            109.0,
+            732.0,
+            597.0,
+            763.0
+          ]
+        },
+        {
+          "text": "Cargo Release: Authorized for named consignee",
+          "confidence": 0.999941349029541,
+          "bbox": [
+            109.0,
+            789.0,
+            863.0,
+            826.0
+          ]
+        },
+        {
+          "text": "Collect Cargo: Colombo cargo terminal",
+          "confidence": 0.9949311017990112,
+          "bbox": [
+            109.0,
+            847.0,
+            712.0,
+            884.0
+          ]
+        },
+        {
+          "text": "RELEASE INSTRUCTIONS",
+          "confidence": 0.9977390170097351,
+          "bbox": [
+            110.0,
+            928.0,
+            561.0,
+            959.0
+          ]
+        },
+        {
+          "text": "Deliver the listed goods to Lanka Apparel Ltd.",
+          "confidence": 0.999987781047821,
+          "bbox": [
+            107.0,
+            992.0,
+            811.0,
+            1031.0
+          ]
+        },
+        {
+          "text": "Goods: Cotton Fabric A and Cotton Fabric B",
+          "confidence": 0.9897239208221436,
+          "bbox": [
+            110.0,
+            1052.0,
+            791.0,
+            1085.0
+          ]
+        },
+        {
+          "text": "Fictional OCR sample | Page 1 of 1",
+          "confidence": 0.9974483251571655,
+          "bbox": [
+            108.0,
+            2207.0,
+            587.0,
+            2238.0
+          ]
+        }
+      ]
+    }
+  ],
+  "repository_pdf_entry_point": {
+    "total_pages": 0,
+    "tokens": 0,
+    "compatible": false,
+    "note": "Repository OcrEngine.extract tested separately; see console for errors."
+  }
+}
