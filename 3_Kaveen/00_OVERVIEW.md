@@ -48,6 +48,7 @@ You own **everything the user sees and interacts with**. The judges will evaluat
 | ~~26~~ | ~~Final Report~~ — ✅ **DONE** 🏁 **READY FOR SUBMISSION** | ~~MUST~~ | ~~1 hour~~ |
 | ~~27~~ | ~~Canonical Key Field Reconciliation UI~~ — ✅ **DONE** Added the Review Workspace reconciliation panel, consensus/outlier display, assertion-driven red highlighting, canonical graph visual semantics, readable discrepancy evidence labels, and a simplified discrepancy-resolution layout. | ~~MUST~~ | ~~2–3 hours~~ |
 | ~~28~~ | ~~Professional UI Copy Cleanup~~ — ✅ **DONE** Standardized sentence case, removed misleading integration and certification claims, simplified shared navigation and workflow copy, corrected knowledge graph fitting after canvas layout, and added an expanded full-screen graph view. | ~~MUST~~ | ~~1–2 hours~~ |
+| ~~34~~ | ~~Shared Finalist Presentation and Viva Preparation Pack~~ — ✅ **DONE** Team preparation artifacts: 10-minute English deck, timed script, project limitations review, 62 viva Q&A, and demo checklist in `Presentation_&_Viva/`. Prepared with assistant support; individual speaking roles and rehearsal remain to be confirmed. | ~~MUST~~ | ~~Preparation pack~~ |
 
 **Total estimated: ~30–42 hours across 3–4 days**
 
