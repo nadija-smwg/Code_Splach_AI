@@ -24,6 +24,12 @@ The invoice goods subtotal is USD 9500; freight USD 400 and insurance USD 100
 give a CIF total of USD 10000. Packing weights add to 480 KG gross and
 440 KG net, with 40 KG tare. Volume sums to 2.400 CBM.
 
+The revised invoice emphasizes the invoice number, country code `IN`,
+Incoterm `CIF`, currency, HS code and total. The CIF delivery place and country
+name are printed separately. Numbered goods rows now include an explicit
+`meters` unit. Their values and source references are also recorded under
+`expected_line_items` in the ground-truth file.
+
 `ground_truth.json` contains 42 expected labelled fields and the complete
 printed text. It contains expected data, not fabricated OCR results.
 
@@ -69,12 +75,12 @@ PaddleOCR 3.7.0 / PaddlePaddle 3.3.1, PP-OCRv6 medium models, CPU, 200 DPI:
 
 | PDF | Mean token confidence | Normalized CER | Labelled fields | Keyword type confidence |
 |---|---:|---:|---:|---:|
-| Commercial invoice | 99.91% | 0.00% | 19 / 19 | 49.12% |
+| Commercial invoice | 99.78% | 0.00% | 19 / 19 | 49.12% |
 | Packing list | 99.84% | 0.00% | 8 / 8 | 87.50% |
 | Bill of lading | 99.78% | 0.00% | 9 / 9 | 77.06% |
 | Delivery order | 99.76% | 0.00% | 6 / 6 | 52.38% |
 
-Across 113 OCR tokens, mean confidence was 99.84%. All 42 labelled fields
+Across 119 OCR tokens, mean confidence was 99.80%. All 42 labelled fields
 were recovered and all four winning keyword document types were correct.
 Low keyword confidence on the invoice and delivery order reflects shared
 document terminology, despite near-perfect OCR. Full raw text, boxes,
@@ -116,3 +122,36 @@ an OCR-focused review, not a full security or frontend behavior audit.
 
 No production pipeline, model weights, requirements, existing demo PDFs,
 cached dossier output, or UI scores were changed for these samples.
+
+## Addressing the export-blocked screenshot
+
+The six invoice fields marked **pending** are already extracted; they have
+only one source assertion. PDF changes cannot approve an existing dossier.
+Adding the same text repeatedly or uploading another copy is not independent
+corroboration. Re-upload the revised samples into a new dossier to process the
+changed evidence, then use the existing review workflow:
+
+1. Open **Review Workspace / Key Field Reconciliation**, expand each pending
+   field, inspect the source and choose **Use [value]**. For this fictional
+   fixture the values are invoice `INV-2026-0930`, total `10000.00`, currency
+   `USD`, Incoterm `CIF`, country code `IN`, and HS code `520812`. Saved source
+   decisions mark the fields resolved without inventing corroboration.
+2. Under **CUSDEC export / Source-referenced goods**, enter the two printed
+   rows if automatic table extraction did not save them. The current pipeline
+   does not include table results in its document output.
+
+   | Description | Quantity | Unit | Unit price | Line total | Source reference |
+   |---|---:|---|---:|---:|---|
+   | Cotton Fabric A | 1200 | meters | 4.75 | 5700.00 | commercial_invoice.pdf, page 1, goods row 1 (INV-2026-0930) |
+   | Cotton Fabric B | 800 | meters | 4.75 | 3800.00 | commercial_invoice.pdf, page 1, goods row 2 (INV-2026-0930) |
+
+   These goods totals are USD 9500; the separate freight and insurance amounts
+   bring the invoice total to USD 10000. The test documents are fictional.
+3. Fill **Declaration details** with the applicable consignee and declarant
+   codes/TINs, exporter code, declarant name, clearance office code, declaration
+   type, procedure code, manifest reference, transport mode, container flag
+   and exchange rate. These 11 values come from the declaration profile,
+   not the PDF extractor. No registration identifiers or exchange rates were
+   fabricated to clear the gate. Use an appropriate test profile for a demo.
+4. Select **Refresh checks** after saving the source decisions, goods rows
+   and profile. The export gate still checks all requirements.
