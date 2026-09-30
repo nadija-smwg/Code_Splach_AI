@@ -61,8 +61,8 @@ class Document:
         self.lines.append(text)
         self.y -= leading
 
-    def field(self, label, value, entity_type=None):
-        self.line(f"{label}: {value}")
+    def field(self, label, value, entity_type=None, bold=False):
+        self.line(f"{label}: {value}", bold=bold)
         if entity_type:
             self.fields[entity_type] = {"label": label, "value": value}
 
@@ -88,14 +88,17 @@ class Document:
             self.pdf.line(MARGIN, self.y - 9, MARGIN + sum(widths), self.y - 9)
             self.y -= 30
 
-    def save(self):
+    def save(self, line_items=None):
         footer = "Fictional OCR sample | Page 1 of 1"
         self.pdf.setFont(REGULAR, 11)
         self.pdf.drawString(MARGIN, 38, footer)
         self.lines.append(footer)
         self.pdf.save()
-        return {"file": self.path.name, "document_type": self.document_type,
-                "pages": 1, "expected_fields": self.fields, "expected_lines": self.lines}
+        record = {"file": self.path.name, "document_type": self.document_type,
+                  "pages": 1, "expected_fields": self.fields, "expected_lines": self.lines}
+        if line_items:
+            record["expected_line_items"] = line_items
+        return record
 
 
 def invoice():
@@ -106,8 +109,8 @@ def invoice():
         ("Shipper", SHIPPER, "SHIPPER_NAME"),
         ("Consignee", CONSIGNEE, "CONSIGNEE_NAME"),
         ("Consignee Address", "18 Lake Road, Colombo, Sri Lanka", "CONSIGNEE_ADDRESS"),
-        ("Country of Origin", "India", "COUNTRY_OF_ORIGIN"),
-        ("Incoterm", "CIF Colombo", "INCOTERM"),
+        ("Country of Origin", "IN", "COUNTRY_OF_ORIGIN"),
+        ("Incoterm", "CIF", "INCOTERM"),
         ("Payment Terms", "30 Days from Invoice Date", "PAYMENT_TERMS"),
         ("Currency", "USD", "CURRENCY_CODE"),
         ("Port of Loading", "Chennai", "PORT_OF_LOADING"),
@@ -118,17 +121,26 @@ def invoice():
         ("Net Weight", NET, "NET_WEIGHT"),
         ("Package Count", PACKAGES, "PACKAGE_COUNT"),
     ]:
-        doc.field(label, value, key)
+        doc.field(label, value, key, bold=key in {
+            "INVOICE_NUMBER", "COUNTRY_OF_ORIGIN", "INCOTERM", "CURRENCY_CODE", "HS_CODE"})
     doc.section("DESCRIPTION OF GOODS")
-    doc.table(["Description", "Qty (M)", "Unit Price", "Amount (USD)"], [
-        ["Cotton Fabric A", "1200", "4.75", "5700.00"],
-        ["Cotton Fabric B", "800", "4.75", "3800.00"],
-    ], [205, 80, 105, 125])
+    doc.table(["No", "Description", "Qty", "Unit", "Unit Price", "Amount USD"], [
+        ["1", "Cotton Fabric A", "1200", "meters", "4.75", "5700.00"],
+        ["2", "Cotton Fabric B", "800", "meters", "4.75", "3800.00"],
+    ], [28, 165, 65, 65, 85, 107])
     doc.field("Goods Subtotal", "USD 9500.00")
     doc.field("Freight Amount", "USD 400.00", "FREIGHT_AMOUNT")
     doc.field("Insurance Amount", "USD 100.00", "INSURANCE_AMOUNT")
-    doc.field("Total Amount", "USD 10000.00", "TOTAL_AMOUNT")
-    return doc.save()
+    doc.field("Total Amount", "USD 10000.00", "TOTAL_AMOUNT", bold=True)
+    doc.line("CIF delivery place: Colombo | Origin country: India", size=11)
+    return doc.save(line_items=[
+        {"row_index": 1, "description": "Cotton Fabric A", "quantity": 1200,
+         "unit": "meters", "unit_price": 4.75, "total_price": 5700.00,
+         "source_reference": "commercial_invoice.pdf, page 1, goods row 1 (INV-2026-0930)"},
+        {"row_index": 2, "description": "Cotton Fabric B", "quantity": 800,
+         "unit": "meters", "unit_price": 4.75, "total_price": 3800.00,
+         "source_reference": "commercial_invoice.pdf, page 1, goods row 2 (INV-2026-0930)"},
+    ])
 
 
 def packing_list():

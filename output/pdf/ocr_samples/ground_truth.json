@@ -30,11 +30,11 @@
         },
         "COUNTRY_OF_ORIGIN": {
           "label": "Country of Origin",
-          "value": "India"
+          "value": "IN"
         },
         "INCOTERM": {
           "label": "Incoterm",
-          "value": "CIF Colombo"
+          "value": "CIF"
         },
         "PAYMENT_TERMS": {
           "label": "Payment Terms",
@@ -94,8 +94,8 @@
         "Shipper: Meridian Textiles Ltd",
         "Consignee: Lanka Apparel Ltd",
         "Consignee Address: 18 Lake Road, Colombo, Sri Lanka",
-        "Country of Origin: India",
-        "Incoterm: CIF Colombo",
+        "Country of Origin: IN",
+        "Incoterm: CIF",
         "Payment Terms: 30 Days from Invoice Date",
         "Currency: USD",
         "Port of Loading: Chennai",
@@ -106,14 +106,35 @@
         "Net Weight: 440.00 KG",
         "Package Count: 20 Cartons",
         "DESCRIPTION OF GOODS",
-        "Description Qty (M) Unit Price Amount (USD)",
-        "Cotton Fabric A 1200 4.75 5700.00",
-        "Cotton Fabric B 800 4.75 3800.00",
+        "No Description Qty Unit Unit Price Amount USD",
+        "1 Cotton Fabric A 1200 meters 4.75 5700.00",
+        "2 Cotton Fabric B 800 meters 4.75 3800.00",
         "Goods Subtotal: USD 9500.00",
         "Freight Amount: USD 400.00",
         "Insurance Amount: USD 100.00",
         "Total Amount: USD 10000.00",
+        "CIF delivery place: Colombo | Origin country: India",
         "Fictional OCR sample | Page 1 of 1"
+      ],
+      "expected_line_items": [
+        {
+          "row_index": 1,
+          "description": "Cotton Fabric A",
+          "quantity": 1200,
+          "unit": "meters",
+          "unit_price": 4.75,
+          "total_price": 5700.0,
+          "source_reference": "commercial_invoice.pdf, page 1, goods row 1 (INV-2026-0930)"
+        },
+        {
+          "row_index": 2,
+          "description": "Cotton Fabric B",
+          "quantity": 800,
+          "unit": "meters",
+          "unit_price": 4.75,
+          "total_price": 3800.0,
+          "source_reference": "commercial_invoice.pdf, page 1, goods row 2 (INV-2026-0930)"
+        }
       ]
     },
     {
